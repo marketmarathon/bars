@@ -8,10 +8,10 @@ jobs:
     permissions:
       contents: write
     steps:
-      - name: Download the RaceKit package
+      - uses: actions/checkout@v4
+      - name: Unpack the RaceKit
         run: |
-          curl -sL "https://res.cloudinary.com/ln2nbbxz/raw/upload/racekit/kit.zip" -o kit.zip
-          mkdir -p kit && unzip -q kit.zip -d kit
+          unzip -q MarketMarathon_RaceKit.zip -d kit
           ls kit
       - uses: actions/setup-node@v4
         with:
