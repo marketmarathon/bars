@@ -1,0 +1,612 @@
+[
+{
+"file": "UK_1996_Q1",
+"headline": "March 1996: EU bans British beef exports as the BSE crisis threatens a £3.5 billion industry",
+"why": "The ban damaged agriculture, food exports and consumer confidence."
+},
+{
+"file": "UK_1996_Q2",
+"headline": "May 1996: Railtrack floats at 380p in a £1.9 billion privatisation",
+"why": "The flotation became a defining test of UK rail privatisation and retail share ownership."
+},
+{
+"file": "UK_1996_Q3",
+"headline": "August 1996: UK RPI inflation falls at 2.1%, reshaping the outlook for rates and consumer spending",
+"why": "Inflation changed expectations for Bank Rate, real household incomes and domestic company earnings."
+},
+{
+"file": "UK_1996_Q4",
+"headline": "November 1996: BT agrees a $20 billion merger with MCI to create a transatlantic telecom giant",
+"why": "The proposed deal signalled the global consolidation race in telecoms."
+},
+{
+"file": "UK_1997_Q1",
+"headline": "February 1997: UK RPI inflation falls at 2.7%, reshaping the outlook for rates and consumer spending",
+"why": "Inflation changed expectations for Bank Rate, real household incomes and domestic company earnings."
+},
+{
+"file": "UK_1997_Q2",
+"headline": "May 1997: Bank of England gains rate-setting independence after Labour wins a 179-seat majority",
+"why": "Independent monetary policy permanently changed how UK rates and bank shares were priced."
+},
+{
+"file": "UK_1997_Q3",
+"headline": "July 1997: Thailand abandons its 10-year baht peg, igniting a crisis that cuts the currency 60% by October",
+"why": "The currency collapse spread across Asia, damaging growth and UK companies with major regional exposure."
+},
+{
+"file": "UK_1997_Q4",
+"headline": "December 1997: Guinness and Grand Metropolitan complete a £24 billion merger to create Diageo",
+"why": "The deal created the world’s largest spirits group and a future FTSE heavyweight."
+},
+{
+"file": "UK_1998_Q1",
+"headline": "February 1998: UK CPI inflation rises at 1.6%, reshaping the outlook for rates and consumer spending",
+"why": "Inflation changed expectations for Bank Rate, real household incomes and domestic company earnings."
+},
+{
+"file": "UK_1998_Q2",
+"headline": "June 1998: Bank of England raises Bank Rate by 25 basis points to 7.5%",
+"why": "The change altered bank margins, borrowing costs, sterling and equity valuations."
+},
+{
+"file": "UK_1998_Q3",
+"headline": "September 1998: Wall Street rescues LTCM with $3.6 billion as its leveraged bets threaten global markets",
+"why": "The rescue showed how hedge-fund leverage could endanger major banks and markets."
+},
+{
+"file": "UK_1998_Q4",
+"headline": "October 1998: Bank of England starts an emergency easing cycle, cutting rates to 7.25%",
+"why": "The cut marked a policy turn as Russia and LTCM weakened global demand."
+},
+{
+"file": "UK_1999_Q1",
+"headline": "January 1999: Euro launches at $1.17, creating a single currency for 11 countries",
+"why": "The euro reshaped European trade, currency markets and banking strategy."
+},
+{
+"file": "UK_1999_Q2",
+"headline": "June 1999: Vodafone completes its $62 billion AirTouch takeover, then the world’s largest corporate deal",
+"why": "The deal made Vodafone the leading global mobile operator."
+},
+{
+"file": "UK_1999_Q3",
+"headline": "July 1999: UK begins selling 395 tonnes of gold near a 20-year price low",
+"why": "The auctions became one of Britain’s most controversial reserve-management decisions."
+},
+{
+"file": "UK_1999_Q4",
+"headline": "December 1999: FTSE 100 closes at a record 6,930.2 as the dot-com boom peaks",
+"why": "The record captured the extraordinary valuation of telecom and technology shares."
+},
+{
+"file": "UK_2000_Q1",
+"headline": "February 2000: Vodafone wins Mannesmann for about €180 billion in the largest takeover ever",
+"why": "The acquisition defined Vodafone’s global expansion but left a huge integration burden."
+},
+{
+"file": "UK_2000_Q2",
+"headline": "March 2000: Nasdaq peaks at 5,048 before the dot-com bubble bursts",
+"why": "The reversal destroyed telecom and technology valuations worldwide."
+},
+{
+"file": "UK_2000_Q3",
+"headline": "September 2000: Fuel protests disrupt UK supplies as petrol prices approach 80p a litre",
+"why": "Blockades exposed the economy’s vulnerability to fuel distribution and taxation."
+},
+{
+"file": "UK_2000_Q4",
+"headline": "December 2000: GlaxoSmithKline is created with a market value of roughly £114 billion",
+"why": "The new group immediately became one of Britain’s largest listed companies."
+},
+{
+"file": "UK_2001_Q1",
+"headline": "March 2001: Dot-com collapse pushes the Nasdaq more than 60% below its peak",
+"why": "Telecom overinvestment and collapsing valuations changed capital allocation for years."
+},
+{
+"file": "UK_2001_Q2",
+"headline": "May 2001: Bank of England cuts Bank Rate by 25 basis points to 5.25%",
+"why": "The change altered bank margins, borrowing costs, sterling and equity valuations."
+},
+{
+"file": "UK_2001_Q3",
+"headline": "September 2001: 9/11 attacks send the FTSE 100 down 5.7% in one session",
+"why": "The attacks triggered a global recession scare and abrupt repricing of risk."
+},
+{
+"file": "UK_2001_Q4",
+"headline": "December 2001: Enron files for bankruptcy with $63.4 billion of assets",
+"why": "The failure transformed audit, governance and credit-risk standards worldwide."
+},
+{
+"file": "UK_2002_Q1",
+"headline": "February 2002: UK CPI inflation falls at 1.5%, reshaping the outlook for rates and consumer spending",
+"why": "Inflation changed expectations for Bank Rate, real household incomes and domestic company earnings."
+},
+{
+"file": "UK_2002_Q2",
+"headline": "June 2002: WorldCom reveals a $3.8 billion accounting fraud",
+"why": "The fraud deepened the telecom bust and damaged confidence in corporate accounts."
+},
+{
+"file": "UK_2002_Q3",
+"headline": "July 2002: WorldCom files the largest-ever US bankruptcy with $107 billion of assets",
+"why": "The bankruptcy intensified losses across telecom lenders and equipment suppliers."
+},
+{
+"file": "UK_2002_Q4",
+"headline": "October 2002: FTSE 100 falls below 3,700 as the post-dot-com bear market reaches its nadir",
+"why": "The collapse reset equity valuations and pension-fund risk appetite."
+},
+{
+"file": "UK_2003_Q1",
+"headline": "March 2003: US-led invasion of Iraq sends oil above $30 a barrel",
+"why": "War risk supported energy prices while weighing on global growth expectations."
+},
+{
+"file": "UK_2003_Q2",
+"headline": "May 2003: SARS outbreak cuts Asian travel and growth as more than 8,000 cases are recorded",
+"why": "The outbreak hit Asian activity and exposed global businesses to epidemic risk."
+},
+{
+"file": "UK_2003_Q3",
+"headline": "July 2003: Bank of England cuts Bank Rate to 3.5%, its lowest since 1955",
+"why": "Cheaper money supported the housing and consumer recovery."
+},
+{
+"file": "UK_2003_Q4",
+"headline": "December 2003: UK CPI inflation holds at 1.3%, reshaping the outlook for rates and consumer spending",
+"why": "Inflation changed expectations for Bank Rate, real household incomes and domestic company earnings."
+},
+{
+"file": "UK_2004_Q1",
+"headline": "March 2004: Shell chairman quits as a 4.47 billion-barrel reserves overstatement rocks the oil major",
+"why": "The scandal destroyed management credibility, triggered governance reform and paved the way for group unification."
+},
+{
+"file": "UK_2004_Q2",
+"headline": "May 2004: European Union expands from 15 to 25 members, adding 75 million consumers",
+"why": "The enlargement expanded trade, labour mobility and investment opportunities."
+},
+{
+"file": "UK_2004_Q3",
+"headline": "July 2004: Brent crude breaks above $40 a barrel as global demand accelerates",
+"why": "The oil upswing lifted cash flows and investment across UK energy majors."
+},
+{
+"file": "UK_2004_Q4",
+"headline": "November 2004: Vodafone launches 3G services across 13 European countries",
+"why": "The launch opened a new mobile-data era after years of costly spectrum investment."
+},
+{
+"file": "UK_2005_Q1",
+"headline": "March 2005: BP Texas City refinery explosion kills 15 people and injures more than 170",
+"why": "The disaster led to billions in costs and a lasting overhaul of BP’s safety culture."
+},
+{
+"file": "UK_2005_Q2",
+"headline": "June 2005: Oil reaches $60 a barrel for the first time",
+"why": "The price surge transformed energy-sector profits and investment plans."
+},
+{
+"file": "UK_2005_Q3",
+"headline": "July 2005: Royal Dutch and Shell Transport unify into a single £120 billion company",
+"why": "Unification simplified governance after the reserves scandal."
+},
+{
+"file": "UK_2005_Q4",
+"headline": "October 2005: BP reports quarterly replacement-cost profit of $6.53 billion",
+"why": "Record oil prices delivered unprecedented cash generation."
+},
+{
+"file": "UK_2006_Q1",
+"headline": "February 2006: UK CPI inflation rises at 2.0%, reshaping the outlook for rates and consumer spending",
+"why": "Inflation changed expectations for Bank Rate, real household incomes and domestic company earnings."
+},
+{
+"file": "UK_2006_Q2",
+"headline": "June 2006: Asia-led sell-off knocks 146 points off the FTSE 100 in one day",
+"why": "The correction ended the market’s early-2006 surge and exposed the sensitivity of miners and financials to global risk."
+},
+{
+"file": "UK_2006_Q3",
+"headline": "August 2006: BP shuts Prudhoe Bay, removing up to 400,000 barrels a day of US output",
+"why": "Pipeline corrosion damaged BP’s reputation and tightened oil supply."
+},
+{
+"file": "UK_2006_Q4",
+"headline": "December 2006: Ferrovial-led consortium completes a £10.3 billion takeover of BAA",
+"why": "The deal transferred control of Heathrow and major UK airports to infrastructure investors."
+},
+{
+"file": "UK_2007_Q1",
+"headline": "February 2007: HSBC issues its first profit warning as US subprime losses reach $10.6 billion",
+"why": "The warning was an early signal that subprime losses could become systemic."
+},
+{
+"file": "UK_2007_Q2",
+"headline": "April 2007: Barclays agrees a €67 billion takeover of ABN Amro",
+"why": "The bidding war encouraged rivals to take extraordinary balance-sheet risk."
+},
+{
+"file": "UK_2007_Q3",
+"headline": "September 2007: Northern Rock suffers Britain’s first bank run in 150 years",
+"why": "The run exposed the fragility of wholesale-funded banking models."
+},
+{
+"file": "UK_2007_Q4",
+"headline": "October 2007: RBS-led consortium wins ABN Amro with a €71 billion bid",
+"why": "The acquisition became one of the defining strategic errors of the financial crisis."
+},
+{
+"file": "UK_2008_Q1",
+"headline": "March 2008: JPMorgan rescues Bear Stearns for $10 a share with Federal Reserve backing",
+"why": "The rescue showed that a major investment bank could fail within days."
+},
+{
+"file": "UK_2008_Q2",
+"headline": "June 2008: RBS raises £12 billion in Europe’s largest-ever rights issue",
+"why": "The emergency fundraising revealed how badly the ABN Amro deal had weakened RBS."
+},
+{
+"file": "UK_2008_Q3",
+"headline": "September 2008: Lehman collapses with $639 billion of assets as Lloyds agrees a £12.2 billion HBOS rescue",
+"why": "The month redefined global finance and forced emergency consolidation in UK banking."
+},
+{
+"file": "UK_2008_Q4",
+"headline": "October 2008: UK government commits £37 billion to recapitalise RBS, Lloyds TSB and HBOS",
+"why": "The intervention prevented collapse but caused massive shareholder dilution."
+},
+{
+"file": "UK_2009_Q1",
+"headline": "January 2009: RBS forecasts a record £24.1 billion loss as the government raises its stake",
+"why": "The loss illustrated the scale of destruction caused by the banking crisis."
+},
+{
+"file": "UK_2009_Q2",
+"headline": "April 2009: G20 leaders pledge $1.1 trillion to stabilise the world economy",
+"why": "The package helped restore confidence in trade and financial markets."
+},
+{
+"file": "UK_2009_Q3",
+"headline": "July 2009: Barclays sells BGI to BlackRock for $13.5 billion",
+"why": "The deal strengthened Barclays without taking direct UK state capital."
+},
+{
+"file": "UK_2009_Q4",
+"headline": "October 2009: UK GDP falls 0.4% in a record sixth consecutive quarter of recession",
+"why": "The surprise contraction delayed recovery expectations and reinforced the case for ultra-low interest rates."
+},
+{
+"file": "UK_2010_Q1",
+"headline": "February 2010: Kraft completes an £11.5 billion takeover of Cadbury",
+"why": "The loss of a British icon intensified debate over foreign takeovers."
+},
+{
+"file": "UK_2010_Q2",
+"headline": "April 2010: Deepwater Horizon explosion kills 11 and begins the largest US marine oil spill",
+"why": "The spill threatened BP’s survival and transformed offshore regulation."
+},
+{
+"file": "UK_2010_Q3",
+"headline": "August 2010: BHP launches a $38.6 billion hostile bid for PotashCorp",
+"why": "The bid showed how strongly miners expected long-term agricultural commodity demand."
+},
+{
+"file": "UK_2010_Q4",
+"headline": "November 2010: Ireland accepts an €85 billion bailout as the eurozone crisis reaches UK banks",
+"why": "The rescue raised fears over European bank exposures and sovereign contagion."
+},
+{
+"file": "UK_2011_Q1",
+"headline": "March 2011: Japan’s earthquake and Fukushima disaster erase about 10% from the Nikkei in two days",
+"why": "The shock disrupted global supply chains and changed nuclear-energy policy."
+},
+{
+"file": "UK_2011_Q2",
+"headline": "May 2011: Glencore floats at a valuation of about £36 billion",
+"why": "The blockbuster listing brought a dominant commodities trader into public markets."
+},
+{
+"file": "UK_2011_Q3",
+"headline": "August 2011: US loses its AAA rating as the FTSE 100 falls nearly 10% in a week",
+"why": "The downgrade and euro crisis triggered a global flight from risk."
+},
+{
+"file": "UK_2011_Q4",
+"headline": "October 2011: Bank of England expands quantitative easing by £75 billion to £275 billion",
+"why": "The move countered recession risks from the eurozone crisis."
+},
+{
+"file": "UK_2012_Q1",
+"headline": "February 2012: UK CPI inflation falls at 3.4%, reshaping the outlook for rates and consumer spending",
+"why": "Inflation changed expectations for Bank Rate, real household incomes and domestic company earnings."
+},
+{
+"file": "UK_2012_Q2",
+"headline": "April 2012: UK enters a double-dip recession as first-quarter GDP contracts 0.2%",
+"why": "The recession weakened domestic demand and reinforced expectations of prolonged monetary support."
+},
+{
+"file": "UK_2012_Q3",
+"headline": "July 2012: Draghi pledges to do ‘whatever it takes’ as Spanish 10-year yields approach 7.5%",
+"why": "The pledge reversed sovereign panic, lowered borrowing costs and revived European banking and equity valuations."
+},
+{
+"file": "UK_2012_Q4",
+"headline": "November 2012: BP agrees a record $4.5 billion US criminal settlement over Deepwater Horizon",
+"why": "The settlement crystallised the spill’s legal and financial cost."
+},
+{
+"file": "UK_2013_Q1",
+"headline": "February 2013: Moody’s strips the UK of its AAA sovereign rating for the first time since 1978",
+"why": "The downgrade reflected weak growth and rising debt after the financial crisis."
+},
+{
+"file": "UK_2013_Q2",
+"headline": "May 2013: Glencore completes its $70 billion merger with Xstrata",
+"why": "The deal created one of the world’s largest diversified commodity groups."
+},
+{
+"file": "UK_2013_Q3",
+"headline": "September 2013: Vodafone sells its Verizon Wireless stake for $130 billion",
+"why": "One of history’s largest deals returned tens of billions to shareholders."
+},
+{
+"file": "UK_2013_Q4",
+"headline": "December 2013: Federal Reserve begins reducing its $85 billion-a-month bond purchases",
+"why": "The taper marked the start of normalisation after the global crisis."
+},
+{
+"file": "UK_2014_Q1",
+"headline": "March 2014: Russia annexes Crimea, putting BP’s 19.75% Rosneft stake under sanctions risk",
+"why": "The crisis made one of BP’s largest strategic investments vulnerable to sanctions, governance and valuation shocks."
+},
+{
+"file": "UK_2014_Q2",
+"headline": "May 2014: AstraZeneca rejects Pfizer’s final £69.4 billion offer",
+"why": "The rejection preserved AstraZeneca’s independence and long-term pipeline strategy."
+},
+{
+"file": "UK_2014_Q3",
+"headline": "September 2014: Tesco reveals a £263 million profit overstatement",
+"why": "The scandal triggered executive departures, investigations and a strategic reset."
+},
+{
+"file": "UK_2014_Q4",
+"headline": "November 2014: OPEC refuses to cut production as oil tumbles below $70",
+"why": "The decision launched a prolonged oil-price collapse."
+},
+{
+"file": "UK_2015_Q1",
+"headline": "February 2015: Swiss Leaks exposes $100 billion held in HSBC’s Geneva private bank",
+"why": "The disclosures intensified pressure on tax transparency and bank conduct."
+},
+{
+"file": "UK_2015_Q2",
+"headline": "May 2015: Conservatives win a 12-seat majority, ending coalition government",
+"why": "The result removed immediate election uncertainty but set up the Brexit referendum."
+},
+{
+"file": "UK_2015_Q3",
+"headline": "July 2015: China’s stock market loses about $3 trillion in three weeks",
+"why": "The rout threatened commodity demand and Asian earnings."
+},
+{
+"file": "UK_2015_Q4",
+"headline": "October 2015: AB InBev agrees a £68 billion takeover of SABMiller",
+"why": "The deal created a brewer producing roughly one in three beers worldwide."
+},
+{
+"file": "UK_2016_Q1",
+"headline": "January 2016: Brent falls below $28 as China fears wipe 6.1% from the FTSE 100 in the month",
+"why": "The sell-off crushed resource earnings and global risk appetite."
+},
+{
+"file": "UK_2016_Q2",
+"headline": "June 2016: Brexit vote sends sterling down 8.1% and the FTSE 250 down 7.2% in one day",
+"why": "The referendum permanently changed Britain’s trade and investment outlook."
+},
+{
+"file": "UK_2016_Q3",
+"headline": "September 2016: SoftBank completes a £24.3 billion takeover of Arm",
+"why": "The sale removed Britain’s leading chip designer from the London market."
+},
+{
+"file": "UK_2016_Q4",
+"headline": "November 2016: Trump victory sends UK mining sectors up as much as 11.1% and Barclays 4.3%",
+"why": "Expectations of US tax cuts, infrastructure spending and higher rates triggered a major rotation into cyclicals."
+},
+{
+"file": "UK_2017_Q1",
+"headline": "March 2017: UK triggers Article 50 and starts the two-year Brexit countdown",
+"why": "Formal exit negotiations began, affecting investment and sterling."
+},
+{
+"file": "UK_2017_Q2",
+"headline": "June 2017: Hung parliament wipes out the government’s majority as sterling falls about 2%",
+"why": "The result weakened the government during crucial Brexit negotiations."
+},
+{
+"file": "UK_2017_Q3",
+"headline": "August 2017: AstraZeneca shares plunge 15% after the MYSTIC lung-cancer trial disappoints",
+"why": "The failure challenged one of the company’s most important growth programmes."
+},
+{
+"file": "UK_2017_Q4",
+"headline": "November 2017: Bank of England raises rates to 0.5%—the first increase in a decade",
+"why": "The move ended the post-crisis era of continuously falling rates."
+},
+{
+"file": "UK_2018_Q1",
+"headline": "February 2018: ‘Volmageddon’ sends the VIX up 116% in one day and triggers a global equity sell-off",
+"why": "The episode exposed hidden leverage in volatility-linked investment products."
+},
+{
+"file": "UK_2018_Q2",
+"headline": "June 2018: US-China trade war begins with tariffs on $50 billion of Chinese goods",
+"why": "The conflict weakened global manufacturing and commodity demand."
+},
+{
+"file": "UK_2018_Q3",
+"headline": "September 2018: Comcast wins Sky in a £30.6 billion auction",
+"why": "The takeover highlighted the strategic value of UK media assets."
+},
+{
+"file": "UK_2018_Q4",
+"headline": "December 2018: FTSE 100 falls 12.5% in its worst year since the financial crisis",
+"why": "Brexit uncertainty, trade war and tighter money hit UK equities."
+},
+{
+"file": "UK_2019_Q1",
+"headline": "January 2019: Government loses the Brexit vote by 230—the biggest Commons defeat in modern history",
+"why": "The defeat intensified uncertainty over Britain’s exit terms."
+},
+{
+"file": "UK_2019_Q2",
+"headline": "May 2019: US raises tariffs on $200 billion of Chinese goods from 10% to 25%",
+"why": "The escalation weakened global growth and commodity expectations."
+},
+{
+"file": "UK_2019_Q3",
+"headline": "July 2019: Boris Johnson becomes prime minister and pledges Brexit by 31 October",
+"why": "Markets repriced the risk of a no-deal exit."
+},
+{
+"file": "UK_2019_Q4",
+"headline": "December 2019: Conservatives win an 80-seat majority and sterling jumps above $1.35",
+"why": "The result cleared the way for the UK to leave the EU."
+},
+{
+"file": "UK_2020_Q1",
+"headline": "January 2020: UK leaves the European Union after 47 years as the first COVID-19 cases reach Britain",
+"why": "The departure began a structural change in UK trade and regulation just as a new health shock reached Britain."
+},
+{
+"file": "UK_2020_Q2",
+"headline": "May 2020: Oxford-AstraZeneca expands its COVID-19 vaccine trial to more than 10,000 participants",
+"why": "The scale-up moved the programme towards decisive efficacy testing and made it central to the global reopening outlook."
+},
+{
+"file": "UK_2020_Q3",
+"headline": "August 2020: UK confirms a record 19.4% second-quarter GDP contraction",
+"why": "The fall was the deepest among major economies in the first lockdown."
+},
+{
+"file": "UK_2020_Q4",
+"headline": "December 2020: UK approves 100 million AstraZeneca doses as a Brexit deal protects £660 billion of trade",
+"why": "Vaccine approval improved the reopening outlook while the trade agreement avoided tariffs and quotas on UK-EU commerce."
+},
+{
+"file": "UK_2021_Q1",
+"headline": "January 2021: UK begins AstraZeneca vaccinations from a 100 million-dose order during the third lockdown",
+"why": "The launch created a credible route to reopening despite severe near-term restrictions on the UK economy."
+},
+{
+"file": "UK_2021_Q2",
+"headline": "April 2021: Greensill Capital collapses with more than $5 billion of exposed investor funds",
+"why": "The failure highlighted risks in opaque supply-chain finance."
+},
+{
+"file": "UK_2021_Q3",
+"headline": "September 2021: UK wholesale gas prices surge more than 70% in a month",
+"why": "The shock drove supplier failures, inflation and household cost pressure."
+},
+{
+"file": "UK_2021_Q4",
+"headline": "November 2021: Shell combines 2 share classes and moves its tax residence to the UK",
+"why": "The simplification improved buyback flexibility and unified the group under one share line and one tax residence."
+},
+{
+"file": "UK_2022_Q1",
+"headline": "February 2022: Russia invades Ukraine, sending Brent above $100 a barrel",
+"why": "The invasion transformed energy, commodity and inflation expectations."
+},
+{
+"file": "UK_2022_Q2",
+"headline": "April 2022: UK inflation reaches 9%, its highest in 40 years",
+"why": "The surge forced rapid rate rises and squeezed real incomes."
+},
+{
+"file": "UK_2022_Q3",
+"headline": "September 2022: Mini-budget sends sterling to a record low of $1.035 and gilt yields soaring",
+"why": "The market revolt forced emergency bond purchases and a change of government."
+},
+{
+"file": "UK_2022_Q4",
+"headline": "October 2022: Liz Truss resigns after 44 days, the shortest premiership in UK history",
+"why": "The resignation followed the collapse of the mini-budget strategy."
+},
+{
+"file": "UK_2023_Q1",
+"headline": "February 2023: Shell reports a record $39.9 billion annual profit",
+"why": "The result showed the extraordinary cash generation from the energy shock."
+},
+{
+"file": "UK_2023_Q2",
+"headline": "May 2023: Arm chooses Nasdaq for a US IPO expected to raise $8–$10 billion",
+"why": "The decision highlighted London’s difficulty retaining high-growth technology listings and reshaped Arm’s ownership future."
+},
+{
+"file": "UK_2023_Q3",
+"headline": "September 2023: Arm IPO values the chip designer at $54.5 billion",
+"why": "The year’s largest IPO restored Arm to public markets—but in New York, not London."
+},
+{
+"file": "UK_2023_Q4",
+"headline": "December 2023: Nearly 200 countries agree at COP28 to transition away from fossil fuels",
+"why": "The agreement strengthened long-term transition pressure on the strategy and valuations of energy and mining majors."
+},
+{
+"file": "UK_2024_Q1",
+"headline": "February 2024: Arm shares jump 48% in one day after an AI-driven revenue forecast",
+"why": "The surge established Arm as a major public-market beneficiary of AI spending."
+},
+{
+"file": "UK_2024_Q2",
+"headline": "June 2024: UK inflation returns to the 2% target for the first time in nearly three years",
+"why": "The milestone opened the door to rate cuts and improved real-income growth."
+},
+{
+"file": "UK_2024_Q3",
+"headline": "July 2024: Labour wins a 174-seat majority, ending 14 years of Conservative government",
+"why": "The result brought a major change in fiscal, planning and industrial policy."
+},
+{
+"file": "UK_2024_Q4",
+"headline": "October 2024: Budget announces £40 billion of tax rises—the largest increase since 1993",
+"why": "The package changed employer costs, gilt issuance and the growth outlook."
+},
+{
+"file": "UK_2025_Q1",
+"headline": "January 2025: FTSE 100 closes at a record 8,646.88 after gaining 6.1% in the month",
+"why": "The record reflected a rotation into cheaper UK equities and defensive sectors."
+},
+{
+"file": "UK_2025_Q2",
+"headline": "June 2025: London’s listed market shrinks as a planned $230 million cobalt IPO is abandoned",
+"why": "The cancellation reinforced concern that London was losing listings and capital formation."
+},
+{
+"file": "UK_2025_Q3",
+"headline": "July 2025: Wise shareholders approve moving its primary listing to the US, taking an £11.3 billion company from London",
+"why": "The vote intensified pressure on London’s ability to retain growth companies."
+},
+{
+"file": "UK_2025_Q4",
+"headline": "October 2025: FTSE 100 closes at a record 9,645.62 as financial stocks lead the market higher",
+"why": "The new high confirmed renewed investor demand for UK large caps, particularly banks and other value sectors."
+},
+{
+"file": "UK_2026_Q1",
+"headline": "March 2026: Iran conflict sends oil up nearly 7% as the FTSE 100 falls 1.2%",
+"why": "The disruption revived inflation fears and hit banks while lifting energy majors."
+},
+{
+"file": "UK_2026_Q2",
+"headline": "June 2026: FTSE 100 completes a 6th consecutive quarterly gain",
+"why": "The streak showed the resilience of UK blue chips through war, inflation and interest-rate volatility."
+}
+]
