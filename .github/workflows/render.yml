@@ -1,0 +1,35 @@
+name: Render bar chart race
+on:
+  workflow_dispatch:
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Rebuild folders from the flat upload
+        run: |
+          mkdir -p fonts company_logos
+          mv IBMPlexSans-*.ttf fonts/ 2>/dev/null || true
+          for f in *.png; do [ "$f" = "logo.png" ] || mv "$f" "company_logos/$f"; done
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install ffmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - name: Install dependencies
+        run: npm install
+      - name: Download event images
+        run: bash fetch_panels.sh
+      - name: Render the video (long step)
+        run: node racekit_full.js config.json
+      - name: Publish the finished video
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: video-${{ github.run_number }}
+          name: Bar chart race video ${{ github.run_number }}
+          files: master.mp4
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
