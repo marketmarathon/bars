@@ -1,0 +1,26 @@
+name: Render bar chart race
+on: { workflow_dispatch: {} }
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - name: Install ffmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - name: Unzip kit
+        run: unzip -q MarketMarathon_RaceKit_UK.zip -d kit
+      - name: Install deps
+        working-directory: kit
+        run: npm ci || npm install
+      - name: Render
+        working-directory: kit
+        run: |
+          bash fetch_panels.sh
+          node racekit_full.js config.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: master-mp4
+          path: kit/master.mp4
