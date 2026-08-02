@@ -1,4 +1,4 @@
-name: Render UK video
+name: Render France video
 on: { workflow_dispatch: {} }
 jobs:
   render:
@@ -11,7 +11,7 @@ jobs:
       - name: Install ffmpeg
         run: sudo apt-get update && sudo apt-get install -y ffmpeg
       - name: Unzip kit
-        run: unzip -q MarketMarathon_RaceKit_UK.zip -d kit
+        run: unzip -q MarketMarathon_RaceKit_FR.zip -d kit
       - name: Install deps
         working-directory: kit
         run: npm ci || npm install
@@ -22,5 +22,5 @@ jobs:
           node racekit_full.js config.json
       - uses: actions/upload-artifact@v4
         with:
-          name: master-mp4
+          name: master-mp4-fr
           path: kit/master.mp4
