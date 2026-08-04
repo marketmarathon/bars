@@ -1,0 +1,31 @@
+name: Render France video (quarterly re-ranked)
+on:
+  workflow_dispatch: {}
+  push:
+    paths: ['MarketMarathon_RaceKit_FR_Quarterly.zip']
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - name: Install ffmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - name: Unzip kit
+        run: unzip -q MarketMarathon_RaceKit_FR_Quarterly.zip -d kit
+      - name: Install deps
+        working-directory: kit
+        run: npm install --no-audit --no-fund
+      - name: Render
+        working-directory: kit
+        run: node racekit_q.js config.json
+      - name: Probe output
+        working-directory: kit
+        run: ffprobe -v error -show_entries format=duration,size -of default=nw=1 master.mp4
+      - uses: actions/upload-artifact@v4
+        with:
+          name: master-mp4-fr-quarterly
+          path: kit/master.mp4
+          retention-days: 90
