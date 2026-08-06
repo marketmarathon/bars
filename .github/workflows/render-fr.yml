@@ -11,7 +11,7 @@ jobs:
       - name: Install ffmpeg
         run: sudo apt-get update && sudo apt-get install -y ffmpeg
       - name: Unzip kit
-        run: unzip -q MarketMarathon_RaceKit_FR.zip -d kit
+        run: unzip -q MarketMarathon_RaceKit_FR.zip -d kit && cp racekit_full.js kit/racekit_full.js
       - name: Install deps
         working-directory: kit
         run: npm ci || npm install
