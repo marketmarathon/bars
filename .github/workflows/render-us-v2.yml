@@ -1,0 +1,30 @@
+name: Render US video (v2 story roller)
+on: { workflow_dispatch: {} }
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - name: Install ffmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - name: Unzip kit
+        run: unzip -q MarketMarathon_RaceKit_US_v2.zip -d kit
+      - name: Install deps
+        working-directory: kit
+        run: npm ci || npm install
+      # v2 has NO event card images, so there is no fetch_panels.sh step.
+      # 44,484 frames at 52 s/year. Expect roughly 80-110 minutes on a 2-core runner.
+      - name: Render
+        working-directory: kit
+        run: node racekit_q_v2.4.js
+      - name: Report
+        working-directory: kit
+        run: ls -la master.mp4 && ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 master.mp4
+      - uses: actions/upload-artifact@v4
+        with:
+          name: us-master-mp4
+          path: kit/master.mp4
+          retention-days: 90
