@@ -15,6 +15,14 @@ jobs:
       - name: Install deps
         working-directory: kit
         run: npm ci || npm install
+      # Blueprint D24 3a.3: the render records exactly what it rendered, so a frozen
+      # dataset can be verified against the run instead of assumed to match it.
+      - name: Record dataset hashes
+        working-directory: kit
+        run: |
+          sha256sum config.json us_race_quarterly.json us_periods.json us_roi_tracker.json \
+                    spx.json us_stories_v2.json event_icons_v2.json subsector_icons.json \
+                    story_logos.json racekit_q_v4b.js | tee dataset_hashes.txt
       # v4b: horizontal news ticker, era-correct company logos, rebranding flash, date chip,
       # title card with the MM logo. 44,484 frames at 52 s/year -> roughly 75-110 min.
       - name: Render
@@ -27,4 +35,11 @@ jobs:
         with:
           name: us-master-v4b
           path: kit/master.mp4
+          retention-days: 90
+      - name: Upload dataset hashes
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: us-v4b-dataset-hashes
+          path: kit/dataset_hashes.txt
           retention-days: 90
