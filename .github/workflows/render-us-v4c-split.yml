@@ -35,6 +35,8 @@ jobs:
 
       # Blueprint 1j: a kit without a lockfile builds against whatever the registry serves
       # that day. Refuse it here rather than render something unreproducible.
+      - name: Install ffmpeg
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
       - name: Preflight - kit must carry a lockfile
         run: |
           test -f kit/package-lock.json || {
@@ -88,6 +90,8 @@ jobs:
       - run: unzip -q "$KIT" -d kit
       - run: npm ci --no-audit --no-fund
         working-directory: kit
+      - name: Install ffmpeg
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
 
       - name: Render slice ${{ matrix.shard }}
         working-directory: kit
@@ -133,6 +137,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: unzip -q "$KIT" -d kit
+      - name: Install ffmpeg
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
       - uses: actions/download-artifact@v4
         with: { pattern: seg-*, merge-multiple: true, path: segs }
       - name: Join, mux and verify
