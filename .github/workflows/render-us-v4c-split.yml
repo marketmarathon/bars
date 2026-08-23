@@ -1,0 +1,211 @@
+name: Render US video (v4c, split across runners)
+
+# The single-runner v4b workflow takes about an hour and twenty minutes. Every frame is drawn
+# from its own position on the timeline and nothing carries over between frames, so the job
+# splits perfectly: twenty runners take a slice each and a final job joins them. Same output,
+# roughly half an hour.
+#
+# The guards from render-us-v4b.yml are kept deliberately: no lockfile means no build, the
+# dataset is hashed so a frozen copy can be verified against the run rather than assumed to
+# match it, and a stalled render dies in two minutes instead of idling for six hours.
+
+on:
+  workflow_dispatch:
+    inputs:
+      shards:
+        description: "How many runners to split the render across"
+        required: true
+        default: "20"
+
+env:
+  KIT: MarketMarathon_RaceKit_US_v4c.zip
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      frames:  ${{ steps.c.outputs.frames }}
+      matrix:  ${{ steps.c.outputs.matrix }}
+      encodes: ${{ steps.c.outputs.encodes }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - run: unzip -q "$KIT" -d kit
+
+      # Blueprint 1j: a kit without a lockfile builds against whatever the registry serves
+      # that day. Refuse it here rather than render something unreproducible.
+      - name: Preflight - kit must carry a lockfile
+        run: |
+          test -f kit/package-lock.json || {
+            echo "::error::Kit has no package-lock.json - refusing to build an unpinned render"
+            exit 1; }
+      - run: npm ci --no-audit --no-fund
+        working-directory: kit
+
+      # Blueprint 3a.3: record exactly what was rendered from.
+      - name: Record dataset hashes
+        working-directory: kit
+        run: |
+          sha256sum config.json us_race_quarterly.json us_periods.json us_roi_tracker.json \
+            spx.json us_stories_v3.json event_icons_v2.json subsector_icons.json \
+            story_logos.json racekit_q_v4c.js | tee dataset_hashes.txt
+          npm ls --all 2>&1 | tee dependency_tree.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: us-v4c-run-evidence
+          path: |
+            kit/dataset_hashes.txt
+            kit/dependency_tree.txt
+          retention-days: 90
+
+      - id: c
+        working-directory: kit
+        run: |
+          TOTAL=$(FRAME_COUNT_ONLY=1 node racekit_q_v4c.js | grep -o 'FRAMES [0-9]*' | cut -d' ' -f2)
+          test -n "$TOTAL" || { echo "::error::could not read the frame count"; exit 1; }
+          echo "frames=$TOTAL" >> $GITHUB_OUTPUT
+          echo "matrix=$(python3 -c "import json;print(json.dumps(list(range(${{ inputs.shards }}))))")" >> $GITHUB_OUTPUT
+          if [ -f encodes.json ]; then
+            echo "encodes=$(python3 -c "import json;print(json.dumps(json.load(open('encodes.json'))))")" >> $GITHUB_OUTPUT
+          else
+            echo 'encodes=[{"suffix":"","pix":"yuv420p"}]' >> $GITHUB_OUTPUT
+          fi
+          echo "::notice::$TOTAL frames across ${{ inputs.shards }} runners"
+
+  render:
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: ${{ fromJson(needs.plan.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - run: unzip -q "$KIT" -d kit
+      - run: npm ci --no-audit --no-fund
+        working-directory: kit
+
+      - name: Render slice ${{ matrix.shard }}
+        working-directory: kit
+        env:
+          TOTAL:   ${{ needs.plan.outputs.frames }}
+          SHARDS:  ${{ inputs.shards }}
+          I:       ${{ matrix.shard }}
+          ENCODES: ${{ needs.plan.outputs.encodes }}
+        run: |
+          PER=$(( (TOTAL + SHARDS - 1) / SHARDS ))
+          A=$(( I * PER )); B=$(( A + PER )); [ $B -gt $TOTAL ] && B=$TOTAL
+          echo "slice $I: frames $A to $((B-1)) of $TOTAL"
+          # A runner has 4 vCPU. One worker using all of them beats several fighting over
+          # them, which is what froze a sixteen-thread laptop on 23 Aug 2026.
+          set +e
+          SEG_START=$A SEG_END=$B NOMUX=1 RASTER_W=3840 \
+            SEG_OUT="seg_$(printf %03d $I).mp4" node racekit_q_v4c.js > render.log 2>&1 &
+          RPID=$!; tail -f render.log & TPID=$!
+          STALL=0
+          while kill -0 $RPID 2>/dev/null; do
+            sleep 15
+            IDLE=$(( $(date +%s) - $(stat -c %Y render.log) ))
+            if [ "$IDLE" -ge 180 ]; then
+              echo "::error::RENDER STALLED - no output for ${IDLE}s"; tail -40 render.log
+              kill -9 $RPID 2>/dev/null; STALL=1; break
+            fi
+          done
+          RC=0; wait $RPID || RC=$?
+          sleep 2; kill $TPID 2>/dev/null
+          [ "$STALL" -eq 1 ] && exit 1
+          exit $RC
+      - run: ls -la kit/seg_*.mp4
+      - uses: actions/upload-artifact@v4
+        with:
+          name: seg-${{ matrix.shard }}
+          path: kit/seg_*.mp4
+          retention-days: 2
+          compression-level: 0
+
+  join:
+    needs: [plan, render]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: unzip -q "$KIT" -d kit
+      - uses: actions/download-artifact@v4
+        with: { pattern: seg-*, merge-multiple: true, path: segs }
+      - name: Join, mux and verify
+        env:
+          ENCODES: ${{ needs.plan.outputs.encodes }}
+          TOTAL:   ${{ needs.plan.outputs.frames }}
+        run: |
+          ls -la segs
+          python3 - <<'PY'
+          import json, os, glob, subprocess, sys
+          enc   = json.loads(os.environ["ENCODES"])
+          total = int(os.environ["TOTAL"])
+          cfg   = json.load(open("kit/config.json"))
+          base  = cfg.get("out", "master.mp4")[:-4]
+          music = cfg.get("music")
+          sfxs  = [e.get("suffix", "") for e in enc]
+          made  = []
+          for sfx in sfxs:
+              if sfx:
+                  segs = sorted(glob.glob("segs/seg_*%s.mp4" % sfx))
+              else:
+                  other = [s for s in sfxs if s]
+                  segs = sorted(f for f in glob.glob("segs/seg_*.mp4")
+                                if not any(o in os.path.basename(f) for o in other))
+              if not segs:
+                  print("::error::no segments for encode '%s'" % (sfx or "main")); sys.exit(1)
+              print("joining %d slices for '%s'" % (len(segs), sfx or "main"))
+              with open("l%s.txt" % sfx, "w") as f:
+                  for s in segs: f.write("file '%s/%s'\n" % (os.getcwd(), s))
+              j = "j%s.mp4" % sfx
+              subprocess.check_call(["ffmpeg","-v","error","-f","concat","-safe","0",
+                                     "-i","l%s.txt" % sfx,"-c","copy","-movflags","+faststart",j])
+              final = base + sfx + ".mp4"
+              if music:
+                  subprocess.check_call(["ffmpeg","-v","error","-i",j,"-stream_loop","-1",
+                      "-i","kit/"+music,"-filter_complex",
+                      "[1:a]volume=0.65,afade=t=in:st=0:d=2[a]","-map","0:v","-map","[a]",
+                      "-c:v","copy","-c:a","aac","-b:a","192k","-ar","48000","-shortest",
+                      "-movflags","+faststart",final])
+              else:
+                  os.replace(j, final)
+              made.append(final)
+
+          print("\n================ MASTERS ================")
+          bad = False
+          for f in made:
+              p = subprocess.run(["ffprobe","-v","error","-show_entries",
+                  "stream=width,height,r_frame_rate,codec_name,profile,pix_fmt,"
+                  "color_primaries,color_transfer,color_space,color_range,nb_frames,sample_rate",
+                  "-show_entries","format=duration,size,bit_rate","-of","json",f],
+                  capture_output=True)
+              d  = json.loads(p.stdout)
+              v  = next((x for x in d["streams"] if x.get("width")), {})
+              a  = next((x for x in d["streams"] if x.get("sample_rate")), {})
+              fm = d["format"]
+              print("\n%s" % f)
+              print("  %sx%s  %s fps  %s (%s)  %s"
+                    % (v.get("width"), v.get("height"), v.get("r_frame_rate"),
+                       v.get("codec_name"), v.get("profile"), v.get("pix_fmt")))
+              print("  colour %s/%s/%s  range %s  audio %s Hz"
+                    % (v.get("color_primaries"), v.get("color_transfer"),
+                       v.get("color_space"), v.get("color_range"), a.get("sample_rate")))
+              print("  %s frames  %.1f s  %.2f GB  %.2f Mbps average"
+                    % (v.get("nb_frames"), float(fm["duration"]),
+                       int(fm["size"])/1e9, int(fm.get("bit_rate",0))/1e6))
+              if int(v.get("nb_frames", 0)) != total:
+                  print("::error::%s has %s frames, expected %d" % (f, v.get("nb_frames"), total))
+                  bad = True
+          sys.exit(1 if bad else 0)
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: us-master-v4c
+          path: "*.mp4"
+          retention-days: 90
+          compression-level: 0
