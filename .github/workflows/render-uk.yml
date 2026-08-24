@@ -20,7 +20,38 @@ jobs:
         run: |
           bash fetch_panels.sh
           node racekit_full.js config.json
+      # Review layer, 24 Aug 2026. The master is never downloaded: a 720p copy and a
+      # contact sheet of stills are small enough to check in seconds, and the master
+      # itself goes straight to the channel as a PRIVATE video.
+      - name: Build review assets
+        run: |
+          MASTER="$(ls kit/master.mp4 | head -1)"
+          echo "master: $MASTER"
+          bash make_review_assets.sh "$MASTER" 20 review
       - uses: actions/upload-artifact@v4
         with:
-          name: master-mp4
+          name: uk-review
+          path: |
+            review/review_720p.mp4
+            review/frames_page_*.png
+          retention-days: 30
+      - name: Upload master to YouTube as private
+        env:
+          YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
+          YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
+          YT_REFRESH_TOKEN: ${{ secrets.YT_REFRESH_TOKEN }}
+        run: |
+          MASTER="$(ls kit/master.mp4 | head -1)"
+          python3 yt_upload.py --file "$MASTER" \
+            --title "Market Marathon UK render $(date -u +%Y-%m-%d) - PRIVATE, unreviewed" \
+            --desc "Automatic private upload from GitHub Actions run ${{ github.run_id }}. Nothing is public. Check the review copy, then set the real title, description and thumbnail before publishing." \
+            --privacy private
+      # Only if something above failed do we keep the master as a downloadable
+      # artifact. A successful run leaves it on the channel instead.
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: master-mp4-fallback
           path: kit/master.mp4
+          retention-days: 5
+          compression-level: 0
