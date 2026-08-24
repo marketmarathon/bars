@@ -181,6 +181,7 @@ jobs:
               else:
                   os.replace(j, final)
               made.append(final)
+              os.remove(j) if os.path.exists(j) else None   # the pre-mux intermediate
 
           print("\n================ MASTERS ================")
           bad = False
@@ -212,6 +213,6 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: us-master-v4c
-          path: "*.mp4"
+          path: "US_master*.mp4"
           retention-days: 90
           compression-level: 0
