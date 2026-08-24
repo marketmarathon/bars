@@ -1,0 +1,43 @@
+name: Test YouTube private upload
+
+# Proves the three YT_* secrets work from inside Actions, using a four second
+# generated clip instead of a real master. Runs in about a minute. Leaves a
+# PRIVATE video on the channel that is safe to delete.
+
+on: { workflow_dispatch: {} }
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install ffmpeg
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
+      - name: Make a four second clip
+        run: |
+          ffmpeg -y -hide_banner -loglevel error \
+            -f lavfi -i "color=c=0x0F1420:s=1280x720:d=4" \
+            -f lavfi -i "sine=frequency=220:duration=4" \
+            -vf "drawtext=text='Actions upload test':fontcolor=0x2EC4B6:fontsize=44:x=(w-text_w)/2:y=(h-text_h)/2" \
+            -c:v libx264 -preset veryfast -crf 28 -c:a aac -shortest test_clip.mp4
+          ls -l test_clip.mp4
+      - name: Check the review-asset script works too
+        run: bash make_review_assets.sh test_clip.mp4 2 review
+      - uses: actions/upload-artifact@v4
+        with:
+          name: test-review
+          path: |
+            review/review_720p.mp4
+            review/frames_page_*.png
+          retention-days: 3
+      - name: Upload as private
+        env:
+          YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
+          YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
+          YT_REFRESH_TOKEN: ${{ secrets.YT_REFRESH_TOKEN }}
+        run: |
+          python3 yt_upload.py --file test_clip.mp4 \
+            --title "Actions upload test $(date -u +%H:%M) - safe to delete" \
+            --desc "Pipeline test from GitHub Actions run ${{ github.run_id }}. Private. Safe to delete." \
+            --privacy private
