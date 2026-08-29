@@ -1,0 +1,242 @@
+name: Render France video (v4c, split across runners)
+
+# France, modelled exactly on render-us-v4c-split.yml, which rendered the published USA video.
+# Every frame is drawn from its own position on the timeline and nothing carries over between
+# them, so the job splits perfectly: N runners take a slice each and a final job joins them.
+#
+# This REPLACES render-fr.yml, which is two formats behind: it calls racekit_full.js, fetches
+# Cloudinary panels that v4b does not use, and expects the old annual kit.
+#
+# Blueprint 1g / D36: the renderer is called racekit_q.js and nothing else.
+
+on:
+  workflow_dispatch:
+    inputs:
+      shards:
+        description: "How many runners to split the render across"
+        required: true
+        default: "20"
+
+env:
+  KIT: MarketMarathon_RaceKit_FR_v4c.zip
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      frames:  ${{ steps.c.outputs.frames }}
+      matrix:  ${{ steps.c.outputs.matrix }}
+      encodes: ${{ steps.c.outputs.encodes }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - run: unzip -q "$KIT" -d kit
+
+      - name: Install ffmpeg
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
+      - name: Preflight - kit must carry a lockfile
+        run: |
+          test -f kit/package-lock.json || {
+            echo "::error::Kit has no package-lock.json - refusing to build an unpinned render"
+            exit 1; }
+      - run: npm ci --no-audit --no-fund
+        working-directory: kit
+
+      # Blueprint 3a.3: the same thirteen files the frozen dataset manifest hashes, so the run
+      # can be compared with MM_FRANCE_MARKETCAP_2003_2026_v1.0 rather than assumed to match it.
+      - name: Record dataset hashes
+        working-directory: kit
+        run: |
+          sha256sum MARKET_UNIVERSE.json cac.json config.json event_icons_v2.json \
+            fr_periods.json fr_race_usd.json fr_reconciliation.json fr_stories_v3.json \
+            france_race_quarterly.json package.json racekit_q.js story_logos.json \
+            subsector_icons.json | tee dataset_hashes.txt
+          npm ls --all 2>&1 | tee dependency_tree.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fr-v4c-run-evidence
+          path: |
+            kit/dataset_hashes.txt
+            kit/dependency_tree.txt
+          retention-days: 90
+
+      - id: c
+        working-directory: kit
+        run: |
+          TOTAL=$(FRAME_COUNT_ONLY=1 node racekit_q.js | grep -o 'FRAMES [0-9]*' | cut -d' ' -f2)
+          test -n "$TOTAL" || { echo "::error::could not read the frame count"; exit 1; }
+          echo "frames=$TOTAL" >> $GITHUB_OUTPUT
+          echo "matrix=$(python3 -c "import json;print(json.dumps(list(range(${{ inputs.shards }}))))")" >> $GITHUB_OUTPUT
+          if [ -f encodes.json ]; then
+            echo "encodes=$(python3 -c "import json;print(json.dumps(json.load(open('encodes.json'))))")" >> $GITHUB_OUTPUT
+          else
+            echo 'encodes=[{"suffix":"","pix":"yuv420p"}]' >> $GITHUB_OUTPUT
+          fi
+          echo "::notice::$TOTAL frames across ${{ inputs.shards }} runners"
+
+  render:
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: ${{ fromJson(needs.plan.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - run: unzip -q "$KIT" -d kit
+      - run: npm ci --no-audit --no-fund
+        working-directory: kit
+      - name: Install ffmpeg
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
+
+      - name: Render slice ${{ matrix.shard }}
+        working-directory: kit
+        env:
+          TOTAL:   ${{ needs.plan.outputs.frames }}
+          SHARDS:  ${{ inputs.shards }}
+          I:       ${{ matrix.shard }}
+          ENCODES: ${{ needs.plan.outputs.encodes }}
+        run: |
+          PER=$(( (TOTAL + SHARDS - 1) / SHARDS ))
+          A=$(( I * PER )); B=$(( A + PER )); [ $B -gt $TOTAL ] && B=$TOTAL
+          echo "slice $I: frames $A to $((B-1)) of $TOTAL"
+          set +e
+          SEG_START=$A SEG_END=$B NOMUX=1 RASTER_W=3840 \
+            SEG_OUT="seg_$(printf %03d $I).mp4" node racekit_q.js > render.log 2>&1 &
+          RPID=$!; tail -f render.log & TPID=$!
+          STALL=0
+          while kill -0 $RPID 2>/dev/null; do
+            sleep 15
+            IDLE=$(( $(date +%s) - $(stat -c %Y render.log) ))
+            if [ "$IDLE" -ge 180 ]; then
+              echo "::error::RENDER STALLED - no output for ${IDLE}s"; tail -40 render.log
+              kill -9 $RPID 2>/dev/null; STALL=1; break
+            fi
+          done
+          RC=0; wait $RPID || RC=$?
+          sleep 2; kill $TPID 2>/dev/null
+          [ "$STALL" -eq 1 ] && exit 1
+          exit $RC
+      - run: ls -la kit/seg_*.mp4
+      - uses: actions/upload-artifact@v4
+        with:
+          name: seg-${{ matrix.shard }}
+          path: kit/seg_*.mp4
+          retention-days: 2
+          compression-level: 0
+
+  join:
+    needs: [plan, render]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: unzip -q "$KIT" -d kit
+      - name: Install ffmpeg
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
+      - uses: actions/download-artifact@v4
+        with: { pattern: seg-*, merge-multiple: true, path: segs }
+      - name: Join, mux and verify
+        env:
+          ENCODES: ${{ needs.plan.outputs.encodes }}
+          TOTAL:   ${{ needs.plan.outputs.frames }}
+        run: |
+          ls -la segs
+          python3 - <<'PY'
+          import json, os, glob, subprocess, sys
+          enc   = json.loads(os.environ["ENCODES"])
+          total = int(os.environ["TOTAL"])
+          cfg   = json.load(open("kit/config.json"))
+          base  = cfg.get("out", "master.mp4")[:-4]
+          music = cfg.get("music")
+          sfxs  = [e.get("suffix", "") for e in enc]
+          made  = []
+          for sfx in sfxs:
+              if sfx:
+                  segs = sorted(glob.glob("segs/seg_*%s.mp4" % sfx))
+              else:
+                  other = [s for s in sfxs if s]
+                  segs = sorted(f for f in glob.glob("segs/seg_*.mp4")
+                                if not any(o in os.path.basename(f) for o in other))
+              if not segs:
+                  print("::error::no segments for encode '%s'" % (sfx or "main")); sys.exit(1)
+              print("joining %d slices for '%s'" % (len(segs), sfx or "main"))
+              with open("l%s.txt" % sfx, "w") as f:
+                  for s in segs: f.write("file '%s/%s'\n" % (os.getcwd(), s))
+              j = "j%s.mp4" % sfx
+              subprocess.check_call(["ffmpeg","-v","error","-f","concat","-safe","0",
+                                     "-i","l%s.txt" % sfx,"-c","copy","-movflags","+faststart",j])
+              final = base + sfx + ".mp4"
+              if music:
+                  subprocess.check_call(["ffmpeg","-v","error","-i",j,"-stream_loop","-1",
+                      "-i","kit/"+music,"-filter_complex",
+                      "[1:a]volume=0.65,afade=t=in:st=0:d=2[a]","-map","0:v","-map","[a]",
+                      "-c:v","copy","-c:a","aac","-b:a","192k","-ar","48000","-shortest",
+                      "-movflags","+faststart",final])
+              else:
+                  os.replace(j, final)
+              made.append(final)
+              os.remove(j) if os.path.exists(j) else None
+
+          print("\n================ MASTERS ================")
+          bad = False
+          for f in made:
+              p = subprocess.run(["ffprobe","-v","error","-show_entries",
+                  "stream=width,height,r_frame_rate,codec_name,profile,pix_fmt,"
+                  "color_primaries,color_transfer,color_space,color_range,nb_frames,sample_rate",
+                  "-show_entries","format=duration,size,bit_rate","-of","json",f],
+                  capture_output=True)
+              d  = json.loads(p.stdout)
+              v  = next((x for x in d["streams"] if x.get("width")), {})
+              a  = next((x for x in d["streams"] if x.get("sample_rate")), {})
+              fm = d["format"]
+              print("\n%s" % f)
+              print("  %sx%s  %s fps  %s (%s)  %s"
+                    % (v.get("width"), v.get("height"), v.get("r_frame_rate"),
+                       v.get("codec_name"), v.get("profile"), v.get("pix_fmt")))
+              print("  colour %s/%s/%s  range %s  audio %s Hz"
+                    % (v.get("color_primaries"), v.get("color_transfer"),
+                       v.get("color_space"), v.get("color_range"), a.get("sample_rate")))
+              print("  %s frames  %.1f s  %.2f GB  %.2f Mbps average"
+                    % (v.get("nb_frames"), float(fm["duration"]),
+                       int(fm["size"])/1e9, int(fm.get("bit_rate",0))/1e6))
+              if int(v.get("nb_frames", 0)) != total:
+                  print("::error::%s has %s frames, expected %d" % (f, v.get("nb_frames"), total))
+                  bad = True
+          sys.exit(1 if bad else 0)
+          PY
+      # The master is never downloaded: a 720p copy and a contact sheet of stills are small
+      # enough to check in seconds, and the master goes to the channel as a PRIVATE video.
+      - name: Build review assets
+        run: |
+          MASTER="$(ls FR_master*.mp4 | head -1)"
+          echo "master: $MASTER"
+          bash make_review_assets.sh "$MASTER" 20 review
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fr-review-v4c
+          path: |
+            review/review_720p.mp4
+            review/frames_page_*.png
+          retention-days: 30
+      - name: Upload master to YouTube as private
+        env:
+          YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
+          YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
+          YT_REFRESH_TOKEN: ${{ secrets.YT_REFRESH_TOKEN }}
+        run: |
+          MASTER="$(ls FR_master*.mp4 | head -1)"
+          python3 yt_upload.py --file "$MASTER" \
+            --title "Market Marathon France render $(date -u +%Y-%m-%d) - PRIVATE, unreviewed" \
+            --desc "Automatic private upload from GitHub Actions run ${{ github.run_id }}. Nothing is public. Check the review copy, then set the real title, description and thumbnail before publishing." \
+            --privacy private
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: fr-master-v4c-fallback
+          path: "FR_master*.mp4"
+          retention-days: 5
+          compression-level: 0
