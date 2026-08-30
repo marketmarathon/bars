@@ -1,4 +1,4 @@
-name: Render US video (v4c, split across runners)
+name: Render FRANCE video (v4c, split across runners)
 
 # The single-runner v4b workflow takes about an hour and twenty minutes. Every frame is drawn
 # from its own position on the timeline and nothing carries over between frames, so the job
@@ -18,7 +18,7 @@ on:
         default: "20"
 
 env:
-  KIT: MarketMarathon_RaceKit_US_v4c.zip
+  KIT: MarketMarathon_RaceKit_FR_v4c.zip
 
 jobs:
   plan:
@@ -58,7 +58,7 @@ jobs:
           npm ls --all 2>&1 | tee dependency_tree.txt
       - uses: actions/upload-artifact@v4
         with:
-          name: us-v4c-run-evidence
+          name: fr-v4c-run-evidence
           path: |
             kit/dataset_hashes.txt
             kit/dependency_tree.txt
@@ -282,12 +282,12 @@ jobs:
       # itself goes straight to the channel as a PRIVATE video.
       - name: Build review assets
         run: |
-          MASTER="$(ls US_master*.mp4 | head -1)"
+          MASTER="$(ls FR_master*.mp4 | head -1)"
           echo "master: $MASTER"
           bash make_review_assets.sh "$MASTER" 20 review
       - uses: actions/upload-artifact@v4
         with:
-          name: us-review-v4c
+          name: fr-review-v4c
           path: |
             review/review_720p.mp4
             review/frames_page_*.png
@@ -298,9 +298,9 @@ jobs:
           YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
           YT_REFRESH_TOKEN: ${{ secrets.YT_REFRESH_TOKEN }}
         run: |
-          MASTER="$(ls US_master*.mp4 | head -1)"
+          MASTER="$(ls FR_master*.mp4 | head -1)"
           python3 yt_upload.py --file "$MASTER" \
-            --title "Market Marathon US render $(date -u +%Y-%m-%d) - PRIVATE, unreviewed" \
+            --title "Market Marathon FRANCE render $(date -u +%Y-%m-%d) - PRIVATE, unreviewed" \
             --desc "Automatic private upload from GitHub Actions run ${{ github.run_id }}. Nothing is public. Check the review copy, then set the real title, description and thumbnail before publishing." \
             --privacy private
       # Only if something above failed do we keep the master as a downloadable
@@ -308,7 +308,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: us-master-v4c-fallback
-          path: "US_master*.mp4"
+          name: fr-master-v4c-fallback
+          path: "FR_master*.mp4"
           retention-days: 5
           compression-level: 0
