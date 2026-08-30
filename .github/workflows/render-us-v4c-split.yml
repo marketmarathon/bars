@@ -67,7 +67,7 @@ jobs:
       - id: c
         working-directory: kit
         run: |
-          TOTAL=$(FRAME_COUNT_ONLY=1 node racekit_q_v4c.js | grep -o 'FRAMES [0-9]*' | cut -d' ' -f2)
+          TOTAL=$(FRAME_COUNT_ONLY=1 node racekit_q.js | grep -o 'FRAMES [0-9]*' | cut -d' ' -f2)
           test -n "$TOTAL" || { echo "::error::could not read the frame count"; exit 1; }
           echo "frames=$TOTAL" >> $GITHUB_OUTPUT
           echo "matrix=$(python3 -c "import json;print(json.dumps(list(range(${{ inputs.shards }}))))")" >> $GITHUB_OUTPUT
@@ -111,7 +111,7 @@ jobs:
           # them, which is what froze a sixteen-thread laptop on 23 Aug 2026.
           set +e
           SEG_START=$A SEG_END=$B NOMUX=1 RASTER_W=3840 \
-            SEG_OUT="seg_$(printf %03d $I).mp4" node racekit_q_v4c.js > render.log 2>&1 &
+            SEG_OUT="seg_$(printf %03d $I).mp4" node racekit_q.js > render.log 2>&1 &
           RPID=$!; tail -f render.log & TPID=$!
           STALL=0
           while kill -0 $RPID 2>/dev/null; do
