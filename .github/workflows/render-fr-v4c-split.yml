@@ -172,16 +172,23 @@ jobs:
           ( cd audio && python3 build_bed.py "$FOLDER" ../bed_raw.mp3 )
           # D41, 30 Aug 2026. YouTube normalises to about -14 LUFS and only ever turns audio
           # DOWN, so a quieter master plays permanently below everything around it. The bed is
-          # measured and corrected to -14 LUFS with a -1.0 dBTP ceiling. Two passes, so the
+          # measured and corrected to -14 LUFS with a -1.0 dBFS ceiling. Two passes, so the
           # result is exact rather than assumed, and it does not depend on build_bed.py's own
           # target.
+          #
+          # The limiter aims at -2.0 rather than the -1.0 the blueprint requires. loudnorm's
+          # ceiling applies to the filtered signal, but what gets verified is the peak of the
+          # DECODED mp3, and lame overshoots by a few tenths of a dB. Measured on 30 Aug 2026:
+          # US +0.1 dB, France +0.4 dB, both over the ceiling with the limiter set to -1.0.
+          # A 1.0 dB aim-off covers the worst observed overshoot two and a half times over and
+          # costs nothing, since the ceiling is a maximum and loudness is set separately.
           MEAS=$(ffmpeg -hide_banner -nostats -i bed_raw.mp3 \
-                 -af loudnorm=I=-14:TP=-1.0:LRA=7:print_format=json -f null - 2>&1 \
+                 -af loudnorm=I=-14:TP=-2.0:LRA=7:print_format=json -f null - 2>&1 \
                  | python3 -c "import sys,json;s=sys.stdin.read();d=json.loads(s[s.rindex('{'):s.rindex('}')+1]);print('%s:%s:%s:%s'%(d['input_i'],d['input_tp'],d['input_lra'],d['input_thresh']))")
           MI=${MEAS%%:*}; R=${MEAS#*:}; MT=${R%%:*}; R=${R#*:}; ML=${R%%:*}; MH=${R#*:}
           echo "bed measured: I=$MI TP=$MT LRA=$ML thresh=$MH"
           ffmpeg -v error -y -i bed_raw.mp3 \
-            -af "loudnorm=I=-14:TP=-1.0:LRA=7:measured_I=$MI:measured_TP=$MT:measured_LRA=$ML:measured_thresh=$MH:linear=true" \
+            -af "loudnorm=I=-14:TP=-2.0:LRA=7:measured_I=$MI:measured_TP=$MT:measured_LRA=$ML:measured_thresh=$MH:linear=true" \
             -c:a libmp3lame -b:a 320k -ar 44100 -ac 2 bed.mp3
           python3 - <<'EOF'
           import subprocess, sys, re
