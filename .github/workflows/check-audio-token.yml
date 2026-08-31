@@ -1,0 +1,37 @@
+# Diagnostic only. Proves AUDIO_REPO_TOKEN can still read the release asset on the private
+# marketmarathon/audio repo. It replicates the auth-critical lines of the "Fetch and build the
+# music bed" step in the render workflows and stops before ffmpeg, so it finishes in seconds
+# instead of failing an hour into a render. Safe to delete once the token is trusted.
+name: Check audio token
+
+on:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch the audio release asset
+        env:
+          GH_TOKEN:     ${{ secrets.AUDIO_REPO_TOKEN }}
+          AUDIO_REPO:   marketmarathon/audio
+          AUDIO_TAG:    audio-v1
+          AUDIO_ASSET:  MarketMarathon_Audio_v1.zip
+          AUDIO_SHA256: 4cdda8dd8c6af8e6d3adb285f6559cb9f87ce51d67d148ee9fa274d832db6278
+        run: |
+          set -euo pipefail
+          test -n "${GH_TOKEN:-}" || { echo "::error::AUDIO_REPO_TOKEN is not set on this repo."; exit 1; }
+          echo "secret present, length ${#GH_TOKEN}"
+          CODE=$(curl -s -o rel.json -w '%{http_code}' -H "Authorization: Bearer $GH_TOKEN" \
+                 -H "Accept: application/vnd.github+json" \
+                 "https://api.github.com/repos/$AUDIO_REPO/releases/tags/$AUDIO_TAG")
+          echo "release lookup HTTP $CODE"
+          if [ "$CODE" = "401" ]; then echo "::error::401 - the token is invalid or expired."; exit 1; fi
+          if [ "$CODE" = "404" ]; then echo "::error::404 - the token cannot see $AUDIO_REPO. Check its repository access and Contents read permission."; exit 1; fi
+          test "$CODE" = "200" || { echo "::error::unexpected HTTP $CODE"; cat rel.json; exit 1; }
+          URL=$(python3 -c "import json,os;d=json.load(open('rel.json'));print(next(a['url'] for a in d['assets'] if a['name']==os.environ['AUDIO_ASSET']))")
+          echo "asset url resolved"
+          curl -sSfL -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/octet-stream" -o audio.zip "$URL"
+          ls -l audio.zip
+          echo "$AUDIO_SHA256  audio.zip" | sha256sum -c -
+          echo "PASS - token reads the release and the zip matches the expected checksum."
