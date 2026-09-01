@@ -18,7 +18,7 @@ on:
         default: "20"
 
 env:
-  KIT: MarketMarathon_RaceKit_FR_v4c.zip
+  KIT: MarketMarathon_RaceKit_FR_v4d.zip
 
 jobs:
   plan:
