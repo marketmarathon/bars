@@ -51,9 +51,13 @@ jobs:
         run: |
           # The kit ships dataset_hashes.txt (blueprint 3a.3 para 4). Re-derive it here from
           # the same file list and fail if any file drifted between freezing and rendering.
-          cut -c67- dataset_hashes.txt > .files.txt
+          # 1 Sep 2026: dataset_hashes.txt may carry header lines (the dataset id and its
+          # content_hash). The unfiltered cut fed those headers to sha256sum as filenames, so
+          # the step died before it could compare anything. Take only the sha256sum lines.
+          grep -E '^[0-9a-f]{64}  ' dataset_hashes.txt > .hashes.txt
+          cut -c67- .hashes.txt > .files.txt
           sha256sum $(cat .files.txt | tr '\n' ' ') | tee dataset_hashes_run.txt
-          diff <(sort dataset_hashes.txt) <(sort dataset_hashes_run.txt) || {
+          diff <(sort .hashes.txt) <(sort dataset_hashes_run.txt) || {
             echo "::error::a data file changed between the frozen dataset and this render"; exit 1; }
           npm ls --all 2>&1 | tee dependency_tree.txt
       - uses: actions/upload-artifact@v4
