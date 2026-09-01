@@ -18,7 +18,7 @@ on:
         default: "20"
 
 env:
-  KIT: MarketMarathon_RaceKit_US_v4c.zip
+  KIT: MarketMarathon_RaceKit_US_v4d.zip
 
 jobs:
   plan:
@@ -152,9 +152,9 @@ jobs:
         env:
           GH_TOKEN:     ${{ secrets.AUDIO_REPO_TOKEN }}
           AUDIO_REPO:   marketmarathon/audio
-          AUDIO_TAG:    audio-v1
-          AUDIO_ASSET:  MarketMarathon_Audio_v1.zip
-          AUDIO_SHA256: 4cdda8dd8c6af8e6d3adb285f6559cb9f87ce51d67d148ee9fa274d832db6278
+          AUDIO_TAG:    audio-v2
+          AUDIO_ASSET:  MarketMarathon_Audio_v2.zip
+          AUDIO_SHA256: 3db90f6017f9c9e0e51861cc2ce213ae72affd39c112860a972c125b9c02467e
         run: |
           set -euo pipefail
           test -n "${GH_TOKEN:-}" || { echo "::error::AUDIO_REPO_TOKEN is not set, so no bed can be built. Blueprint 1.9.0 requires music on every video."; exit 1; }
