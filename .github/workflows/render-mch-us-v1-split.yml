@@ -1,0 +1,370 @@
+name: Render Market Cap History (USA, story layout, split across runners)
+
+# Playlist two. Same pipeline as the race, deliberately: same shard-and-join shape, the same
+# lockfile guard, the same dataset-hash check, the same stall timeout, the same two encodes and
+# the same private YouTube upload. The kit differs and the workflow barely does, which is the
+# point — a second pipeline is a second thing to keep in step.
+#
+# What is different:
+#   * the kit declares layout "story", so racekit_q.js draws the year block, the story and the
+#     photograph in the right third instead of the ticker, the scoreboard and the title card
+#   * a rendered year is four quarter steps at 7.5 s each, so 28 years is about 14 minutes of
+#     video against the race's half hour
+#   * the bed is one that already exists in the audio release. Nothing is assembled here.
+#
+# The gate runs BEFORE this: pipeline_gate.py refuses a kit missing a story, a photograph, a
+# credit line, or one whose story overruns the column. Do not dispatch this to find that out.
+
+on:
+  workflow_dispatch:
+    inputs:
+      shards:
+        description: "How many runners to split the render across"
+        required: true
+        default: "20"
+
+env:
+  KIT: MarketMarathon_RaceKit_MCH_US_v1.zip
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      frames:  ${{ steps.c.outputs.frames }}
+      matrix:  ${{ steps.c.outputs.matrix }}
+      encodes: ${{ steps.c.outputs.encodes }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - run: unzip -q "$KIT" -d kit
+      # 5 Sep 2026: the 29 story photographs live in the repo as loose files rather than
+      # inside the kit zip. 44 MB of PNG made the zip too large to upload by the route
+      # available, and the photographs are the one part of a story kit that is bulky and
+      # never changes during a render. They are hashed in dataset_hashes.txt exactly as
+      # before, so the check below still covers them.
+      - name: Place the story photographs
+        run: |
+          test -d story_images || { echo "::error::repo has no story_images/ folder"; exit 1; }
+          mkdir -p kit/story_images && cp story_images/*.png kit/story_images/
+          N=$(ls kit/story_images/*.png | wc -l)
+          echo "story photographs placed: $N"
+          test "$N" -eq 29 || { echo "::error::expected 29 story photographs, found $N"; exit 1; }
+
+      # Blueprint 1j: a kit without a lockfile builds against whatever the registry serves
+      # that day. Refuse it here rather than render something unreproducible.
+      - name: Install ffmpeg
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
+      - name: Preflight - kit must carry a lockfile
+        run: |
+          test -f kit/package-lock.json || {
+            echo "::error::Kit has no package-lock.json - refusing to build an unpinned render"
+            exit 1; }
+      - run: npm ci --no-audit --no-fund
+        working-directory: kit
+
+      # Blueprint 3a.3: record exactly what was rendered from.
+      - name: Record dataset hashes
+        working-directory: kit
+        run: |
+          # The kit ships dataset_hashes.txt (blueprint 3a.3 para 4). Re-derive it here from
+          # the same file list and fail if any file drifted between freezing and rendering.
+          # 1 Sep 2026: dataset_hashes.txt may carry header lines (the dataset id and its
+          # content_hash). The unfiltered cut fed those headers to sha256sum as filenames, so
+          # the step died before it could compare anything. Take only the sha256sum lines.
+          grep -E '^[0-9a-f]{64}  ' dataset_hashes.txt > .hashes.txt
+          cut -c67- .hashes.txt > .files.txt
+          sha256sum $(cat .files.txt | tr '\n' ' ') | tee dataset_hashes_run.txt
+          diff <(sort .hashes.txt) <(sort dataset_hashes_run.txt) || {
+            echo "::error::a data file changed between the frozen dataset and this render"; exit 1; }
+          npm ls --all 2>&1 | tee dependency_tree.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mch-us-v1-run-evidence
+          path: |
+            kit/dataset_hashes.txt
+            kit/dependency_tree.txt
+          retention-days: 90
+
+      - id: c
+        working-directory: kit
+        run: |
+          TOTAL=$(FRAME_COUNT_ONLY=1 node racekit_q.js | grep -o 'FRAMES [0-9]*' | cut -d' ' -f2)
+          test -n "$TOTAL" || { echo "::error::could not read the frame count"; exit 1; }
+          echo "frames=$TOTAL" >> $GITHUB_OUTPUT
+          echo "matrix=$(python3 -c "import json;print(json.dumps(list(range(${{ inputs.shards }}))))")" >> $GITHUB_OUTPUT
+          if [ -f encodes.json ]; then
+            echo "encodes=$(python3 -c "import json;print(json.dumps(json.load(open('encodes.json'))))")" >> $GITHUB_OUTPUT
+          else
+            echo 'encodes=[{"suffix":"","pix":"yuv420p"}]' >> $GITHUB_OUTPUT
+          fi
+          echo "::notice::$TOTAL frames across ${{ inputs.shards }} runners"
+
+  render:
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: ${{ fromJson(needs.plan.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - run: unzip -q "$KIT" -d kit
+      # 5 Sep 2026: the 29 story photographs live in the repo as loose files rather than
+      # inside the kit zip. 44 MB of PNG made the zip too large to upload by the route
+      # available, and the photographs are the one part of a story kit that is bulky and
+      # never changes during a render. They are hashed in dataset_hashes.txt exactly as
+      # before, so the check below still covers them.
+      - name: Place the story photographs
+        run: |
+          test -d story_images || { echo "::error::repo has no story_images/ folder"; exit 1; }
+          mkdir -p kit/story_images && cp story_images/*.png kit/story_images/
+          N=$(ls kit/story_images/*.png | wc -l)
+          echo "story photographs placed: $N"
+          test "$N" -eq 29 || { echo "::error::expected 29 story photographs, found $N"; exit 1; }
+      - run: npm ci --no-audit --no-fund
+        working-directory: kit
+      - name: Install ffmpeg
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
+
+      - name: Render slice ${{ matrix.shard }}
+        working-directory: kit
+        env:
+          TOTAL:   ${{ needs.plan.outputs.frames }}
+          SHARDS:  ${{ inputs.shards }}
+          I:       ${{ matrix.shard }}
+          ENCODES: ${{ needs.plan.outputs.encodes }}
+        run: |
+          PER=$(( (TOTAL + SHARDS - 1) / SHARDS ))
+          A=$(( I * PER )); B=$(( A + PER )); [ $B -gt $TOTAL ] && B=$TOTAL
+          echo "slice $I: frames $A to $((B-1)) of $TOTAL"
+          # A runner has 4 vCPU. One worker using all of them beats several fighting over
+          # them, which is what froze a sixteen-thread laptop on 23 Aug 2026.
+          set +e
+          SEG_START=$A SEG_END=$B NOMUX=1 RASTER_W=3840 \
+            SEG_OUT="seg_$(printf %03d $I).mp4" node racekit_q.js > render.log 2>&1 &
+          RPID=$!; tail -f render.log & TPID=$!
+          STALL=0
+          while kill -0 $RPID 2>/dev/null; do
+            sleep 15
+            IDLE=$(( $(date +%s) - $(stat -c %Y render.log) ))
+            if [ "$IDLE" -ge 180 ]; then
+              echo "::error::RENDER STALLED - no output for ${IDLE}s"; tail -40 render.log
+              kill -9 $RPID 2>/dev/null; STALL=1; break
+            fi
+          done
+          RC=0; wait $RPID || RC=$?
+          sleep 2; kill $TPID 2>/dev/null
+          [ "$STALL" -eq 1 ] && exit 1
+          exit $RC
+      - run: ls -la kit/seg_*.mp4
+      - uses: actions/upload-artifact@v4
+        with:
+          name: seg-${{ matrix.shard }}
+          path: kit/seg_*.mp4
+          retention-days: 2
+          compression-level: 0
+
+  join:
+    needs: [plan, render]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: unzip -q "$KIT" -d kit
+      # 5 Sep 2026: the 29 story photographs live in the repo as loose files rather than
+      # inside the kit zip. 44 MB of PNG made the zip too large to upload by the route
+      # available, and the photographs are the one part of a story kit that is bulky and
+      # never changes during a render. They are hashed in dataset_hashes.txt exactly as
+      # before, so the check below still covers them.
+      - name: Place the story photographs
+        run: |
+          test -d story_images || { echo "::error::repo has no story_images/ folder"; exit 1; }
+          mkdir -p kit/story_images && cp story_images/*.png kit/story_images/
+          N=$(ls kit/story_images/*.png | wc -l)
+          echo "story photographs placed: $N"
+          test "$N" -eq 29 || { echo "::error::expected 29 story photographs, found $N"; exit 1; }
+      - name: Install ffmpeg
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
+      - uses: actions/download-artifact@v4
+        with: { pattern: seg-*, merge-multiple: true, path: segs }
+      # D38, blueprint 1.9.0 §1i. Music is MANDATORY on every video and NEVER ships in the
+      # kit. The YouTube Audio Library licence forbids distributing its files separately from
+      # a video, and this repo is public, so the bed is built here from the release asset on
+      # the private marketmarathon/audio repo.
+      - name: Fetch and build the music bed
+        env:
+          GH_TOKEN:     ${{ secrets.AUDIO_REPO_TOKEN }}
+          AUDIO_REPO:   marketmarathon/audio
+          AUDIO_TAG:    audio-v2
+          AUDIO_ASSET:  MarketMarathon_Audio_v2.zip
+          AUDIO_SHA256: 3db90f6017f9c9e0e51861cc2ce213ae72affd39c112860a972c125b9c02467e
+        run: |
+          set -euo pipefail
+          test -n "${GH_TOKEN:-}" || { echo "::error::AUDIO_REPO_TOKEN is not set, so no bed can be built. Blueprint 1.9.0 requires music on every video."; exit 1; }
+          BED=$(python3 -c "import json;print(json.load(open('kit/config.json')).get('music_bed',''))")
+          test -n "$BED" || { echo "::error::kit/config.json has no music_bed key."; exit 1; }
+          echo "bed key: $BED"
+          URL=$(curl -sSf -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" \
+                "https://api.github.com/repos/$AUDIO_REPO/releases/tags/$AUDIO_TAG" \
+                | python3 -c "import json,sys,os;d=json.load(sys.stdin);print(next(a['url'] for a in d['assets'] if a['name']==os.environ['AUDIO_ASSET']))")
+          curl -sSfL -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/octet-stream" -o audio.zip "$URL"
+          echo "$AUDIO_SHA256  audio.zip" | sha256sum -c -
+          unzip -q audio.zip -d audio
+          # This series declares a bed that already exists in the audio release, so there is
+          # no assembly step here. If Market Cap History is ever given a bed of its own, it is
+          # cut into the release rather than built on the runner.
+          FOLDER=$(python3 -c "import json,sys;print(json.load(open('audio/beds.json'))[sys.argv[1]]['folder'])" "$BED")
+          echo "building bed from $FOLDER"
+          ( cd audio && python3 build_bed.py "$FOLDER" ../bed_raw.mp3 )
+          # D41, 30 Aug 2026. YouTube normalises to about -14 LUFS and only ever turns audio
+          # DOWN, so a quieter master plays permanently below everything around it. The bed is
+          # measured and corrected to -14 LUFS with a -1.0 dBFS ceiling. Two passes, so the
+          # result is exact rather than assumed, and it does not depend on build_bed.py's own
+          # target.
+          #
+          # The limiter aims at -2.0 rather than the -1.0 the blueprint requires. loudnorm's
+          # ceiling applies to the filtered signal, but what gets verified is the peak of the
+          # DECODED mp3, and lame overshoots by a few tenths of a dB. Measured on 30 Aug 2026:
+          # US +0.1 dB, France +0.4 dB, both over the ceiling with the limiter set to -1.0.
+          # A 1.0 dB aim-off covers the worst observed overshoot two and a half times over and
+          # costs nothing, since the ceiling is a maximum and loudness is set separately.
+          MEAS=$(ffmpeg -hide_banner -nostats -i bed_raw.mp3 \
+                 -af loudnorm=I=-14:TP=-2.0:LRA=7:print_format=json -f null - 2>&1 \
+                 | python3 -c "import sys,json;s=sys.stdin.read();d=json.loads(s[s.rindex('{'):s.rindex('}')+1]);print('%s:%s:%s:%s'%(d['input_i'],d['input_tp'],d['input_lra'],d['input_thresh']))")
+          MI=${MEAS%%:*}; R=${MEAS#*:}; MT=${R%%:*}; R=${R#*:}; ML=${R%%:*}; MH=${R#*:}
+          echo "bed measured: I=$MI TP=$MT LRA=$ML thresh=$MH"
+          ffmpeg -v error -y -i bed_raw.mp3 \
+            -af "loudnorm=I=-14:TP=-2.0:LRA=7:measured_I=$MI:measured_TP=$MT:measured_LRA=$ML:measured_thresh=$MH:linear=true" \
+            -c:a libmp3lame -b:a 320k -ar 44100 -ac 2 bed.mp3
+          python3 - <<'EOF'
+          import subprocess, sys, re
+          out = subprocess.run(["ffmpeg","-hide_banner","-nostats","-i","bed.mp3",
+                                "-filter_complex","ebur128=peak=true","-f","null","-"],
+                               capture_output=True, text=True).stderr
+          I = float(re.findall(r"I:\s*(-?[\d.]+) LUFS", out)[-1])
+          P = float(re.findall(r"Peak:\s*(-?[\d.]+) dBFS", out)[-1])
+          d = float(subprocess.run(["ffprobe","-v","error","-show_entries","format=duration",
+                                    "-of","csv=p=0","bed.mp3"], capture_output=True, text=True).stdout)
+          print("bed  %.2f min  %.1f LUFS  peak %.1f dBFS" % (d/60, I, P))
+          bad = []
+          if abs(I + 14.0) > 1.0: bad.append("loudness is %.1f LUFS; blueprint D41 requires -14.0" % I)
+          if P > -1.0:            bad.append("true peak is %.1f dBFS, over the -1.0 ceiling" % P)
+          for b in bad: print("::error::bed " + b)
+          sys.exit(1 if bad else 0)
+          EOF
+      - name: Join, mux and verify
+        env:
+          ENCODES: ${{ needs.plan.outputs.encodes }}
+          TOTAL:   ${{ needs.plan.outputs.frames }}
+        run: |
+          ls -la segs
+          python3 - <<'PY'
+          import json, os, glob, subprocess, sys
+          enc   = json.loads(os.environ["ENCODES"])
+          total = int(os.environ["TOTAL"])
+          cfg   = json.load(open("kit/config.json"))
+          base  = cfg.get("out", "master.mp4")[:-4]
+          music = "bed.mp3"                      # D38: built from the private audio repo
+          if not os.path.exists(music):
+              print("::error::no music bed was built. Blueprint 1.9.0 requires music on every video.")
+              sys.exit(1)
+          def _dur(f):
+              return float(subprocess.run(["ffprobe","-v","error","-show_entries","format=duration",
+                                           "-of","csv=p=0",f], capture_output=True, text=True).stdout)
+          sfxs  = [e.get("suffix", "") for e in enc]
+          made  = []
+          for sfx in sfxs:
+              if sfx:
+                  segs = sorted(glob.glob("segs/seg_*%s.mp4" % sfx))
+              else:
+                  other = [s for s in sfxs if s]
+                  segs = sorted(f for f in glob.glob("segs/seg_*.mp4")
+                                if not any(o in os.path.basename(f) for o in other))
+              if not segs:
+                  print("::error::no segments for encode '%s'" % (sfx or "main")); sys.exit(1)
+              print("joining %d slices for '%s'" % (len(segs), sfx or "main"))
+              with open("l%s.txt" % sfx, "w") as f:
+                  for s in segs: f.write("file '%s/%s'\n" % (os.getcwd(), s))
+              j = "j%s.mp4" % sfx
+              subprocess.check_call(["ffmpeg","-v","error","-f","concat","-safe","0",
+                                     "-i","l%s.txt" % sfx,"-c","copy","-movflags","+faststart",j])
+              final = base + sfx + ".mp4"
+              if _dur(music) < _dur(j):
+                  print("::error::the bed is %.1fs but the race is %.1fs. Blueprint 1.9.0 requires a "
+                        "bed longer than the race so it never loops." % (_dur(music), _dur(j)))
+                  sys.exit(1)
+              # volume=1.0: the level lives in the bed (-14.0 LUFS under D41), never in a
+              # multiplier here. D38.
+              subprocess.check_call(["ffmpeg","-v","error","-i",j,"-stream_loop","-1",
+                  "-i",music,"-filter_complex",
+                  "[1:a]volume=1.0,afade=t=in:st=0:d=2[a]","-map","0:v","-map","[a]",
+                  "-c:v","copy","-c:a","aac","-b:a","192k","-ar","48000","-shortest",
+                  "-movflags","+faststart",final])
+              made.append(final)
+              os.remove(j) if os.path.exists(j) else None   # the pre-mux intermediate
+
+          print("\n================ MASTERS ================")
+          bad = False
+          for f in made:
+              p = subprocess.run(["ffprobe","-v","error","-show_entries",
+                  "stream=width,height,r_frame_rate,codec_name,profile,pix_fmt,"
+                  "color_primaries,color_transfer,color_space,color_range,nb_frames,sample_rate",
+                  "-show_entries","format=duration,size,bit_rate","-of","json",f],
+                  capture_output=True)
+              d  = json.loads(p.stdout)
+              v  = next((x for x in d["streams"] if x.get("width")), {})
+              a  = next((x for x in d["streams"] if x.get("sample_rate")), {})
+              fm = d["format"]
+              print("\n%s" % f)
+              print("  %sx%s  %s fps  %s (%s)  %s"
+                    % (v.get("width"), v.get("height"), v.get("r_frame_rate"),
+                       v.get("codec_name"), v.get("profile"), v.get("pix_fmt")))
+              print("  colour %s/%s/%s  range %s  audio %s Hz"
+                    % (v.get("color_primaries"), v.get("color_transfer"),
+                       v.get("color_space"), v.get("color_range"), a.get("sample_rate")))
+              print("  %s frames  %.1f s  %.2f GB  %.2f Mbps average"
+                    % (v.get("nb_frames"), float(fm["duration"]),
+                       int(fm["size"])/1e9, int(fm.get("bit_rate",0))/1e6))
+              if int(v.get("nb_frames", 0)) != total:
+                  print("::error::%s has %s frames, expected %d" % (f, v.get("nb_frames"), total))
+                  bad = True
+          sys.exit(1 if bad else 0)
+          PY
+      # Review layer, 24 Aug 2026. The master is never downloaded: a 720p copy and a
+      # contact sheet of stills are small enough to check in seconds, and the master
+      # itself goes straight to the channel as a PRIVATE video.
+      - name: Build review assets
+        run: |
+          MASTER="$(ls *_master*.mp4 | head -1)"
+          echo "master: $MASTER"
+          bash make_review_assets.sh "$MASTER" 20 review
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mch-review-us-v1
+          path: |
+            review/review_720p.mp4
+            review/frames_page_*.png
+          retention-days: 30
+      - name: Upload master to YouTube as private
+        env:
+          YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
+          YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
+          YT_REFRESH_TOKEN: ${{ secrets.YT_REFRESH_TOKEN }}
+        run: |
+          MASTER="$(ls *_master*.mp4 | head -1)"
+          python3 yt_upload.py --file "$MASTER" \
+            --title "Market Marathon Market Cap History render $(date -u +%Y-%m-%d) - PRIVATE, unreviewed" \
+            --desc "Automatic private upload from GitHub Actions run ${{ github.run_id }}. Nothing is public. Check the review copy, then set the real title, description and thumbnail before publishing." \
+            --privacy private
+      # Only if something above failed do we keep the master as a downloadable
+      # artifact. A successful run leaves it on the channel instead.
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: mch-master-us-v1-fallback
+          path: "*_master*.mp4"
+          retention-days: 5
+          compression-level: 0
