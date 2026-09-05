@@ -13,6 +13,13 @@ Credentials come from the environment (set them as GitHub repository secrets):
 Usage:
     python3 yt_upload.py --file master.mp4 --title "..." [--desc-file desc.txt]
                          [--tags "a,b,c"] [--privacy private] [--category 25]
+                         [--playlist "Market Cap History"]
+
+--playlist places the finished video in a playlist of that name, creating the playlist
+as private if the channel does not have one yet. It is BEST EFFORT: adding to a playlist
+needs a wider OAuth scope than uploading does, so an older refresh token can upload
+perfectly well and still be refused here. That must not throw away a render, so a failure
+prints what happened and the step still succeeds.
 """
 
 import argparse
@@ -27,6 +34,7 @@ import urllib.request
 TOKEN_URL = "https://oauth2.googleapis.com/token"
 UPLOAD_URL = ("https://www.googleapis.com/upload/youtube/v3/videos"
               "?uploadType=resumable&part=snippet,status")
+API = "https://www.googleapis.com/youtube/v3"
 CHUNK = 8 * 1024 * 1024  # 8 MB
 
 
@@ -119,6 +127,60 @@ def upload(session_url, path):
     die("upload loop ended without a response from YouTube")
 
 
+def _api(token, method, path, query=None, body=None):
+    url = f"{API}/{path}"
+    if query:
+        url += "?" + urllib.parse.urlencode(query)
+    data = json.dumps(body).encode() if body is not None else None
+    req = urllib.request.Request(url, data=data, method=method)
+    req.add_header("Authorization", f"Bearer {token}")
+    if data is not None:
+        req.add_header("Content-Type", "application/json; charset=UTF-8")
+    with urllib.request.urlopen(req, timeout=90) as r:
+        return json.load(r)
+
+
+def add_to_playlist(token, vid, name, privacy="private"):
+    """Find or create the named playlist and put the video in it. Never fatal."""
+    try:
+        pid = None
+        page = None
+        while True:
+            q = {"part": "snippet", "mine": "true", "maxResults": 50}
+            if page:
+                q["pageToken"] = page
+            r = _api(token, "GET", "playlists", q)
+            for it in r.get("items", []):
+                if it["snippet"]["title"].strip().lower() == name.strip().lower():
+                    pid = it["id"]
+                    break
+            page = r.get("nextPageToken")
+            if pid or not page:
+                break
+        if pid:
+            print(f"Playlist found: {name} ({pid})")
+        else:
+            r = _api(token, "POST", "playlists", {"part": "snippet,status"},
+                     {"snippet": {"title": name},
+                      "status": {"privacyStatus": privacy}})
+            pid = r["id"]
+            print(f"Playlist created as {privacy}: {name} ({pid})")
+        _api(token, "POST", "playlistItems", {"part": "snippet"},
+             {"snippet": {"playlistId": pid,
+                          "resourceId": {"kind": "youtube#video", "videoId": vid}}})
+        print(f"Added to playlist: {name}")
+        return f"https://www.youtube.com/playlist?list={pid}"
+    except urllib.error.HTTPError as e:
+        detail = e.read().decode(errors="replace")[:400]
+        print(f"::warning::could not add the video to the playlist {name!r} ({e.code}). "
+              f"The upload is fine; add it by hand this once. If this says insufficient "
+              f"scope, the YT_REFRESH_TOKEN was granted for upload only and needs "
+              f"re-authorising with the youtube scope. {detail}", file=sys.stderr)
+    except Exception as e:                      # never lose a render over a playlist
+        print(f"::warning::playlist step failed: {e}", file=sys.stderr)
+    return None
+
+
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("--file", required=True)
@@ -130,6 +192,8 @@ def main():
                    choices=["private", "unlisted", "public"])
     p.add_argument("--category", default="25")  # 25 = News & Politics
     p.add_argument("--language", default="en")
+    p.add_argument("--playlist", default="",
+                   help="place the video in this playlist, creating it if needed")
     a = p.parse_args()
 
     if not os.path.isfile(a.file):
@@ -172,13 +236,18 @@ def main():
     studio = f"https://studio.youtube.com/video/{vid}/edit"
     print(f"\nVideo id: {vid}\nWatch:    {watch}\nStudio:   {studio}")
 
+    plurl = add_to_playlist(token, vid, a.playlist, a.privacy) if a.playlist else None
+
     summary = os.environ.get("GITHUB_STEP_SUMMARY")
     if summary:
         with open(summary, "a", encoding="utf-8") as fh:
             fh.write(f"### Private upload ready\n\n"
                      f"- **Watch:** {watch}\n"
                      f"- **Edit in Studio:** {studio}\n"
-                     f"- Privacy: `{a.privacy}` — nothing is public until you change it.\n")
+                     f"- Privacy: `{a.privacy}` — nothing is public until you change it.\n"
+                     + (f"- **Playlist:** {a.playlist} — {plurl}\n" if plurl else
+                        (f"- Playlist: NOT added to `{a.playlist}` — see the warning in the log.\n"
+                         if a.playlist else "")))
     out = os.environ.get("GITHUB_OUTPUT")
     if out:
         with open(out, "a", encoding="utf-8") as fh:
