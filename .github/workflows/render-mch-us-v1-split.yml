@@ -355,7 +355,12 @@ jobs:
           YT_REFRESH_TOKEN: ${{ secrets.YT_REFRESH_TOKEN }}
         run: |
           MASTER="$(ls *_master*.mp4 | head -1)"
+          # D62: the kit says which playlist the series belongs in, so a video lands in the
+          # right place without anyone touching the channel by hand. Best effort inside
+          # yt_upload.py: a playlist failure warns and does not fail the render.
+          PLAYLIST="$(python3 -c "import json;print(json.load(open('kit/config.json')).get('youtube_playlist',''))")"
           python3 yt_upload.py --file "$MASTER" \
+            ${PLAYLIST:+--playlist "$PLAYLIST"} \
             --title "Market Marathon Market Cap History render $(date -u +%Y-%m-%d) - PRIVATE, unreviewed" \
             --desc "Automatic private upload from GitHub Actions run ${{ github.run_id }}. Nothing is public. Check the review copy, then set the real title, description and thumbnail before publishing." \
             --privacy private
