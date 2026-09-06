@@ -1,4 +1,4 @@
-name: Render Market Cap History (USA, story layout, split across runners)
+name: Render Market Cap History (UK, story layout, split across runners)
 
 # Playlist two. Same pipeline as the race, deliberately: same shard-and-join shape, the same
 # lockfile guard, the same dataset-hash check, the same stall timeout, the same two encodes and
@@ -8,8 +8,9 @@ name: Render Market Cap History (USA, story layout, split across runners)
 # What is different:
 #   * the kit declares layout "story", so racekit_q.js draws the year block, the story and the
 #     photograph in the right third instead of the ticker, the scoreboard and the title card
-#   * a rendered year is four quarter steps at 7.5 s each, so 28 years is about 14 minutes of
-#     video against the race's half hour
+#   * a rendered year is four quarter steps at 10 s each, so 30 years is about 20 minutes of
+#     video. The UK board moves far more slowly than the American one, which is why it is 40 s
+#     a year and not the USA's 60
 #   * the bed is one that already exists in the audio release. Nothing is assembled here.
 #
 # The gate runs BEFORE this: pipeline_gate.py refuses a kit missing a story, a photograph, a
@@ -24,7 +25,7 @@ on:
         default: "20"
 
 env:
-  KIT: MarketMarathon_RaceKit_MCH_US_v1.zip
+  KIT: MarketMarathon_RaceKit_MCH_UK_v1.zip
 
 jobs:
   plan:
@@ -38,7 +39,7 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: '22' }
       - run: unzip -q "$KIT" -d kit
-      # 5 Sep 2026: the 29 story photographs live in the repo as loose files rather than
+      # 5 Sep 2026: the 30 story photographs live in the repo as loose files rather than
       # inside the kit zip. 44 MB of PNG made the zip too large to upload by the route
       # available, and the photographs are the one part of a story kit that is bulky and
       # never changes during a render. They are hashed in dataset_hashes.txt exactly as
@@ -47,10 +48,10 @@ jobs:
         run: |
           test -d story_images || { echo "::error::repo has no story_images/ folder"; exit 1; }
           # 6 Sep 2026: story_images/ is shared between countries now, so take only ours.
-          mkdir -p kit/story_images && cp story_images/us_*.png kit/story_images/
-          N=$(ls kit/story_images/us_*.png | wc -l)
+          mkdir -p kit/story_images && cp story_images/uk_*.png kit/story_images/
+          N=$(ls kit/story_images/uk_*.png | wc -l)
           echo "story photographs placed: $N"
-          test "$N" -eq 29 || { echo "::error::expected 29 story photographs, found $N"; exit 1; }
+          test "$N" -eq 30 || { echo "::error::expected 30 story photographs, found $N"; exit 1; }
 
       # Blueprint 1j: a kit without a lockfile builds against whatever the registry serves
       # that day. Refuse it here rather than render something unreproducible.
@@ -114,7 +115,7 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: '22' }
       - run: unzip -q "$KIT" -d kit
-      # 5 Sep 2026: the 29 story photographs live in the repo as loose files rather than
+      # 5 Sep 2026: the 30 story photographs live in the repo as loose files rather than
       # inside the kit zip. 44 MB of PNG made the zip too large to upload by the route
       # available, and the photographs are the one part of a story kit that is bulky and
       # never changes during a render. They are hashed in dataset_hashes.txt exactly as
@@ -123,10 +124,10 @@ jobs:
         run: |
           test -d story_images || { echo "::error::repo has no story_images/ folder"; exit 1; }
           # 6 Sep 2026: story_images/ is shared between countries now, so take only ours.
-          mkdir -p kit/story_images && cp story_images/us_*.png kit/story_images/
-          N=$(ls kit/story_images/us_*.png | wc -l)
+          mkdir -p kit/story_images && cp story_images/uk_*.png kit/story_images/
+          N=$(ls kit/story_images/uk_*.png | wc -l)
           echo "story photographs placed: $N"
-          test "$N" -eq 29 || { echo "::error::expected 29 story photographs, found $N"; exit 1; }
+          test "$N" -eq 30 || { echo "::error::expected 30 story photographs, found $N"; exit 1; }
       - run: npm ci --no-audit --no-fund
         working-directory: kit
       - name: Install ffmpeg
@@ -176,7 +177,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: unzip -q "$KIT" -d kit
-      # 5 Sep 2026: the 29 story photographs live in the repo as loose files rather than
+      # 5 Sep 2026: the 30 story photographs live in the repo as loose files rather than
       # inside the kit zip. 44 MB of PNG made the zip too large to upload by the route
       # available, and the photographs are the one part of a story kit that is bulky and
       # never changes during a render. They are hashed in dataset_hashes.txt exactly as
@@ -185,10 +186,10 @@ jobs:
         run: |
           test -d story_images || { echo "::error::repo has no story_images/ folder"; exit 1; }
           # 6 Sep 2026: story_images/ is shared between countries now, so take only ours.
-          mkdir -p kit/story_images && cp story_images/us_*.png kit/story_images/
-          N=$(ls kit/story_images/us_*.png | wc -l)
+          mkdir -p kit/story_images && cp story_images/uk_*.png kit/story_images/
+          N=$(ls kit/story_images/uk_*.png | wc -l)
           echo "story photographs placed: $N"
-          test "$N" -eq 29 || { echo "::error::expected 29 story photographs, found $N"; exit 1; }
+          test "$N" -eq 30 || { echo "::error::expected 30 story photographs, found $N"; exit 1; }
       - name: Install ffmpeg
         run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
       - uses: actions/download-artifact@v4
