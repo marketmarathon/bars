@@ -217,9 +217,46 @@ jobs:
           curl -sSfL -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/octet-stream" -o audio.zip "$URL"
           echo "$AUDIO_SHA256  audio.zip" | sha256sum -c -
           unzip -q audio.zip -d audio
-          # This series declares a bed that already exists in the audio release, so there is
-          # no assembly step here. If Market Cap History is ever given a bed of its own, it is
-          # cut into the release rather than built on the runner.
+          # 7 Sep 2026. The audio-v2 release has no "UK" entry in beds.json: the UK bed is
+          # assembled on the runner from tracks already inside the release, exactly as the UK
+          # race workflow does. Kept byte-identical to render-uk-v4d-split.yml so the two UK
+          # films share one bed. Market Cap History does not have a bed of its own.
+          # 3 Sep 2026, UK. The audio release predates the UK bed, so beds.json inside the zip
+          # has no "UK" entry. Every one of the thirteen UK tracks is already in the zip, nine in
+          # USA_bed_v2 and four in FRANCE_bed, so the folder is assembled here from those files
+          # rather than cutting a new 200 MB release. Loudness is carried across by TITLE, because
+          # a track's measured loudness does not depend on its position in a bed. A missing track
+          # fails the step rather than producing a short bed.
+          python3 - <<'PYBED'
+          import json, io, os, shutil, glob, sys
+          ORDER = ["Waterfall","Chords of Harmony","Kiss the Sky","In Eternity We'll Meet",
+                   "Immortality","Just Stay","Lunar Levitation","Liquid Time","Drops of Earth",
+                   "Portrait of Time","Apex","The Rising","Borderless"]
+          A = "audio"
+          lufs = json.load(io.open(os.path.join(A,"measured_lufs.json"), encoding="utf-8"))
+          by = {}
+          for d in ("USA_bed_v2","USA_bed","FRANCE_bed"):
+              for f in sorted(glob.glob(os.path.join(A,d,"[0-9][0-9] - *.mp3"))):
+                  by.setdefault(os.path.basename(f)[5:-4], (f, lufs.get(os.path.basename(f))))
+          missing = [t for t in ORDER if t not in by or by[t][1] is None]
+          if missing:
+              print("::error::the audio release is missing %s" % ", ".join(missing)); sys.exit(1)
+          out = os.path.join(A,"UK_bed"); os.makedirs(out, exist_ok=True)
+          for i, t in enumerate(ORDER, 1):
+              src, lv = by[t]
+              dst = "%02d - %s.mp3" % (i, t)
+              shutil.copy(src, os.path.join(out, dst))
+              lufs[dst] = lv
+          io.open(os.path.join(A,"measured_lufs.json"),"w",encoding="utf-8").write(
+              json.dumps(lufs, indent=1, ensure_ascii=False))
+          beds = json.load(io.open(os.path.join(A,"beds.json"), encoding="utf-8"))
+          beds["UK"] = {"folder":"UK_bed","crossfade_seconds":6,"target_lufs":-14.0,
+                        "limiter_dbfs":-1.5,
+                        "tracks":["%02d - %s.mp3" % (i,t) for i,t in enumerate(ORDER,1)]}
+          io.open(os.path.join(A,"beds.json"),"w",encoding="utf-8").write(
+              json.dumps(beds, indent=1, ensure_ascii=False))
+          print("UK_bed assembled from %d tracks already in the release" % len(ORDER))
+          PYBED
           FOLDER=$(python3 -c "import json,sys;print(json.load(open('audio/beds.json'))[sys.argv[1]]['folder'])" "$BED")
           echo "building bed from $FOLDER"
           ( cd audio && python3 build_bed.py "$FOLDER" ../bed_raw.mp3 )
