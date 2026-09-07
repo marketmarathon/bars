@@ -230,12 +230,15 @@ jobs:
           # Each track is CAPPED just past the point it goes quiet, then crossfaded. Without
           # the caps the crossfade lands inside the outgoing track's own fade to silence and
           # the bed drops out. Measured: 2.9 s of silence at 7:30 in the first cut.
-          folder = json.load(open('audio/beds.json'))[cfg['music_bed']]['folder']
-          root = None
-          for d,_,_ in os.walk('audio'):
-              if os.path.basename(d) == folder: root = d; break
-          if not root:
-              print('::error::the audio release has no folder %r for bed %s' % (folder, cfg['music_bed'])); sys.exit(1)
+          # Track paths come from config.json, NOT from beds.json. The release is audio-v2
+          # from 1 Sep 2026 and has no US_FORMATC key, so a lookup there fails - which is
+          # exactly what failed run 34153041345. The four tracks live in USA_bed_v2/.
+          root = 'audio'
+          if not os.path.isdir(os.path.join(root, cfg['bed_folder'])):
+              hits = [d for d,_,_ in os.walk('audio') if os.path.basename(d) == cfg['bed_folder']]
+              if not hits:
+                  print('::error::the audio release has no %r folder' % cfg['bed_folder']); sys.exit(1)
+              root = os.path.dirname(hits[0])
           args = ['ffmpeg','-hide_banner','-loglevel','error','-y']
           parts, n = [], len(cfg['bed_tracks'])
           for i,t in enumerate(cfg['bed_tracks']):
