@@ -1,0 +1,374 @@
+name: Render Rise and Fall (USA, Format C, split across runners)
+
+# Playlist three. Same shard-and-join shape as the race and Market Cap History, on purpose:
+# the same lockfile guard, the same dataset-hash check, the same stall watchdog, the same
+# private YouTube upload. Two things genuinely differ and both are explained where they happen.
+#
+#   1. The renderer draws through Chromium, not node-canvas. player2.html is the approved
+#      Format C renderer and porting its canvas drawing to node-canvas would be a rewrite.
+#      One extra install step buys that.
+#
+#   2. THE BED IS BUILT HERE, NOT BY build_bed.py. Format C's bed needs each track capped
+#      before the crossfade, because these tracks fade to silence at the end and a 6 s
+#      crossfade against a whole file starts after the outgoing track has already gone
+#      quiet. That put 2.9 s of silence at 7:30 into the first cut. build_bed.py in the
+#      audio release takes whole files and cannot express a cap, so the caps live in
+#      config.json and the mix happens below. Fixing build_bed.py would mean a new audio
+#      release, which is Luke's upload, so this stays self-contained until then.
+#
+# Also unlike the other two: this bed is EXACTLY the length of the video and fades out,
+# rather than being longer and trimmed by -shortest. The other series stop dead; this one
+# does not.
+#
+# Run the gate before dispatching this. Do not use a render to find out the kit is wrong.
+
+on:
+  workflow_dispatch:
+    inputs:
+      shards:
+        description: "How many runners to split the render across"
+        required: true
+        default: "18"
+      raster_w:
+        description: "3840 for a master (blueprint 1i.1), 1920 for a preview"
+        required: true
+        default: "3840"
+
+env:
+  KIT: MarketMarathon_RaceKit_RF_US_v1.zip
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      frames: ${{ steps.c.outputs.frames }}
+      matrix: ${{ steps.c.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - run: unzip -q "$KIT" -d kit
+      # 7 Sep 2026: the 29 year photographs live in the repo as loose files rather than inside
+      # the kit zip, the same as Market Cap History's story images and for the same reason -
+      # 17 MB of JPEG puts the zip over the size the upload route allows. They are hashed in
+      # dataset_hashes.txt at their in-kit path, so the check still covers them.
+      - name: Place the year photographs
+        run: |
+          test -d rf_year_photos || { echo "::error::repo has no rf_year_photos/ folder"; exit 1; }
+          mkdir -p kit/year_photos && cp rf_year_photos/*.jpg kit/year_photos/
+          N=$(ls kit/year_photos/*.jpg | wc -l)
+          echo "year photographs placed: $N"
+          test "$N" -eq 29 || { echo "::error::expected 29 year photographs, found $N"; exit 1; }
+
+      # Blueprint 1j: a kit without a lockfile builds against whatever the registry serves
+      # that day. Refuse it here rather than render something unreproducible.
+      - name: Preflight - kit must carry a lockfile
+        run: |
+          test -f kit/package-lock.json || {
+            echo "::error::Kit has no package-lock.json - refusing to build an unpinned render"; exit 1; }
+      - run: npm ci --no-audit --no-fund
+        working-directory: kit
+
+      # Blueprint 3a.3: record exactly what was rendered from. dataset_hashes.txt carries
+      # header lines, so take only the sha256sum lines before comparing.
+      - name: Record dataset hashes
+        working-directory: kit
+        run: |
+          grep -E '^[0-9a-f]{64}  ' dataset_hashes.txt > .hashes.txt
+          cut -c67- .hashes.txt > .files.txt
+          sha256sum $(cat .files.txt | tr '\n' ' ') > dataset_hashes_run.txt
+          diff <(sort .hashes.txt) <(sort dataset_hashes_run.txt) || {
+            echo "::error::a data file changed between the frozen dataset and this render"; exit 1; }
+          npm ls --all 2>&1 | tee dependency_tree.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rf-us-v1-run-evidence
+          path: |
+            kit/dataset_hashes.txt
+            kit/dependency_tree.txt
+          retention-days: 90
+
+      - id: c
+        working-directory: kit
+        run: |
+          TOTAL=$(FRAME_COUNT_ONLY=1 node formatc.js | grep -o 'FRAMES [0-9]*' | cut -d' ' -f2)
+          test -n "$TOTAL" || { echo "::error::could not read the frame count"; exit 1; }
+          echo "frames=$TOTAL" >> $GITHUB_OUTPUT
+          echo "matrix=$(python3 -c "import json;print(json.dumps(list(range(${{ inputs.shards }}))))")" >> $GITHUB_OUTPUT
+          echo "::notice::$TOTAL frames across ${{ inputs.shards }} runners at ${{ inputs.raster_w }} wide"
+
+  render:
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: ${{ fromJson(needs.plan.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - run: unzip -q "$KIT" -d kit
+      # 7 Sep 2026: the 29 year photographs live in the repo as loose files rather than inside
+      # the kit zip, the same as Market Cap History's story images and for the same reason -
+      # 17 MB of JPEG puts the zip over the size the upload route allows. They are hashed in
+      # dataset_hashes.txt at their in-kit path, so the check still covers them.
+      - name: Place the year photographs
+        run: |
+          test -d rf_year_photos || { echo "::error::repo has no rf_year_photos/ folder"; exit 1; }
+          mkdir -p kit/year_photos && cp rf_year_photos/*.jpg kit/year_photos/
+          N=$(ls kit/year_photos/*.jpg | wc -l)
+          echo "year photographs placed: $N"
+          test "$N" -eq 29 || { echo "::error::expected 29 year photographs, found $N"; exit 1; }
+      - run: npm ci --no-audit --no-fund
+        working-directory: kit
+      - name: Install ffmpeg
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
+      # The renderer draws in a real browser, so the browser has to be here. --with-deps
+      # pulls the shared libraries a headless Chromium needs on a bare runner.
+      - name: Install Chromium for Playwright
+        working-directory: kit
+        run: npx playwright install --with-deps chromium
+      # Archivo is the series typeface for Format C. A runner has none of it, and canvas
+      # silently substitutes rather than failing, which would ship the wrong typography.
+      - name: Install Archivo and prove it resolved
+        run: |
+          sudo apt-get install -y -qq fontconfig fonts-archivo || {
+            mkdir -p ~/.fonts
+            curl -sSfL -o /tmp/archivo.zip "https://fonts.google.com/download?family=Archivo"
+            unzip -q -o /tmp/archivo.zip -d /tmp/archivo && cp /tmp/archivo/**/*.ttf ~/.fonts/ 2>/dev/null || cp /tmp/archivo/*.ttf ~/.fonts/
+            fc-cache -f
+          }
+          fc-list | grep -qi archivo || { echo "::error::Archivo did not install; refusing to render with a substituted typeface"; exit 1; }
+          fc-list | grep -i archivo | head -5
+
+      - name: Render slice ${{ matrix.shard }}
+        working-directory: kit
+        env:
+          TOTAL:    ${{ needs.plan.outputs.frames }}
+          SHARDS:   ${{ inputs.shards }}
+          I:        ${{ matrix.shard }}
+          RASTER_W: ${{ inputs.raster_w }}
+        run: |
+          PER=$(( (TOTAL + SHARDS - 1) / SHARDS ))
+          A=$(( I * PER )); B=$(( A + PER )); [ $B -gt $TOTAL ] && B=$TOTAL
+          if [ $A -ge $TOTAL ]; then echo "nothing to do for shard $I"; exit 0; fi
+          echo "slice $I: frames $A to $((B-1)) of $TOTAL"
+          set +e
+          SEG_START=$A SEG_END=$B NOMUX=1 \
+            SEG_OUT="seg_$(printf %03d $I).mp4" node formatc.js > render.log 2>&1 &
+          RPID=$!; tail -f render.log & TPID=$!
+          STALL=0
+          while kill -0 $RPID 2>/dev/null; do
+            sleep 15
+            IDLE=$(( $(date +%s) - $(stat -c %Y render.log) ))
+            if [ "$IDLE" -ge 240 ]; then
+              echo "::error::RENDER STALLED - no output for ${IDLE}s"; tail -40 render.log
+              kill -9 $RPID 2>/dev/null; STALL=1; break
+            fi
+          done
+          RC=0; wait $RPID || RC=$?
+          sleep 2; kill $TPID 2>/dev/null
+          [ "$STALL" -eq 1 ] && exit 1
+          exit $RC
+      - run: ls -la kit/seg_*.mp4
+      - uses: actions/upload-artifact@v4
+        with:
+          name: seg-${{ matrix.shard }}
+          path: kit/seg_*.mp4
+          retention-days: 2
+          compression-level: 0
+
+  join:
+    needs: [plan, render]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: unzip -q "$KIT" -d kit
+      # 7 Sep 2026: the 29 year photographs live in the repo as loose files rather than inside
+      # the kit zip, the same as Market Cap History's story images and for the same reason -
+      # 17 MB of JPEG puts the zip over the size the upload route allows. They are hashed in
+      # dataset_hashes.txt at their in-kit path, so the check still covers them.
+      - name: Place the year photographs
+        run: |
+          test -d rf_year_photos || { echo "::error::repo has no rf_year_photos/ folder"; exit 1; }
+          mkdir -p kit/year_photos && cp rf_year_photos/*.jpg kit/year_photos/
+          N=$(ls kit/year_photos/*.jpg | wc -l)
+          echo "year photographs placed: $N"
+          test "$N" -eq 29 || { echo "::error::expected 29 year photographs, found $N"; exit 1; }
+      - name: Install ffmpeg
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
+      - uses: actions/download-artifact@v4
+        with: { pattern: seg-*, merge-multiple: true, path: segs }
+
+      # D38: music is mandatory and NEVER ships in the kit. The Audio Library licence
+      # forbids distributing the files separately from a video and this repo is public,
+      # so the tracks come from the private marketmarathon/audio release.
+      - name: Fetch the licensed tracks and build the Format C bed
+        env:
+          GH_TOKEN:     ${{ secrets.AUDIO_REPO_TOKEN }}
+          AUDIO_REPO:   marketmarathon/audio
+          AUDIO_TAG:    audio-v2
+          AUDIO_ASSET:  MarketMarathon_Audio_v2.zip
+          AUDIO_SHA256: 3db90f6017f9c9e0e51861cc2ce213ae72affd39c112860a972c125b9c02467e
+        run: |
+          set -euo pipefail
+          test -n "${GH_TOKEN:-}" || { echo "::error::AUDIO_REPO_TOKEN is not set, so no bed can be built. Blueprint 1.9.0 requires music on every video."; exit 1; }
+          URL=$(curl -sSf -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" \
+                "https://api.github.com/repos/$AUDIO_REPO/releases/tags/$AUDIO_TAG" \
+                | python3 -c "import json,sys,os;d=json.load(sys.stdin);print(next(a['url'] for a in d['assets'] if a['name']==os.environ['AUDIO_ASSET']))")
+          curl -sSfL -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/octet-stream" -o audio.zip "$URL"
+          echo "$AUDIO_SHA256  audio.zip" | sha256sum -c -
+          unzip -q audio.zip -d audio
+          python3 - <<'EOF'
+          import json, os, glob, subprocess, sys
+          cfg = json.load(open('kit/config.json'))
+          dur = cfg['intro_sec'] + cfg['race_sec'] + cfg['outro_sec']
+          xf  = cfg['bed_crossfade_sec']
+          # Each track is CAPPED just past the point it goes quiet, then crossfaded. Without
+          # the caps the crossfade lands inside the outgoing track's own fade to silence and
+          # the bed drops out. Measured: 2.9 s of silence at 7:30 in the first cut.
+          folder = json.load(open('audio/beds.json'))[cfg['music_bed']]['folder']
+          root = None
+          for d,_,_ in os.walk('audio'):
+              if os.path.basename(d) == folder: root = d; break
+          if not root:
+              print('::error::the audio release has no folder %r for bed %s' % (folder, cfg['music_bed'])); sys.exit(1)
+          args = ['ffmpeg','-hide_banner','-loglevel','error','-y']
+          parts, n = [], len(cfg['bed_tracks'])
+          for i,t in enumerate(cfg['bed_tracks']):
+              p = os.path.join(root, t['file'])
+              if not os.path.exists(p):
+                  print('::error::bed track missing from the release: %s' % p); sys.exit(1)
+              if t.get('cap_sec'): args += ['-t', str(t['cap_sec'])]
+              args += ['-i', p]
+              parts.append('[%d:a]volume=%sdB[g%d]' % (i, t['gain_db'], i))
+          prev = '[g0]'
+          for i in range(1, n):
+              parts.append('%s[g%d]acrossfade=d=%s:c1=tri:c2=tri[x%d]' % (prev, i, xf, i)); prev = '[x%d]' % i
+          parts.append('%salimiter=level_in=1:level_out=1:limit=0.841:attack=5:release=50:level=disabled[out]' % prev)
+          args += ['-filter_complex', ';'.join(parts), '-map', '[out]', '-ar', '48000', '-ac', '2', 'stitched.flac']
+          subprocess.check_call(args)
+          d = float(subprocess.run(['ffprobe','-v','error','-show_entries','format=duration','-of','csv=p=0','stitched.flac'],
+                                   capture_output=True, text=True).stdout)
+          print('stitched %.1fs against a %.1fs video' % (d, dur))
+          if d < dur:
+              print('::error::the stitched bed is %.1fs but the video is %.1fs' % (d, dur)); sys.exit(1)
+          # No hole may survive into the video. The one at the start is Serenity's own quiet
+          # opening and sits under the title card, which is wanted.
+          out = subprocess.run(['ffmpeg','-hide_banner','-nostats','-i','stitched.flac',
+                                '-t',str(dur),'-af','silencedetect=noise=-42dB:d=0.8','-f','null','-'],
+                               capture_output=True, text=True).stderr
+          import re
+          holes = [(float(a)-float(b), float(a)) for b,a in re.findall(r'silence_duration: ([\d.]+)', out) and [] or []]
+          ends = re.findall(r'silence_end: ([\d.]+) \| silence_duration: ([\d.]+)', out)
+          bad = [(float(e)-float(l), float(e)) for e,l in ends if float(e)-float(l) > 2.0]
+          for st,en in bad: print('::error::the bed goes silent for %.1fs at %.0fs' % (en-st, st))
+          if bad: sys.exit(1)
+          fi, fo = cfg['bed_fade_in_sec'], cfg['bed_fade_out_sec']
+          af = 'afade=t=in:st=0:d=%s,afade=t=out:st=%s:d=%s' % (fi, dur-fo, fo)
+          # D41: two passes, so -14.0 LUFS is exact rather than assumed. The limiter aims at
+          # -2.5 dBTP, not the -2.0 the other series use, because the AAC mux here overshoots
+          # about 0.9 dB. Measured 7 Sep 2026: -2.0 in gave -1.30 out, only 0.3 dB under the
+          # -1.0 ceiling; -2.5 in gives -1.45.
+          m = subprocess.run(['ffmpeg','-hide_banner','-nostats','-i','stitched.flac','-t',str(dur),
+                              '-af', af + ',loudnorm=I=-14:TP=-2.5:LRA=7:print_format=json','-f','null','-'],
+                             capture_output=True, text=True).stderr
+          j = json.loads(m[m.rindex('{'):m.rindex('}')+1])
+          print('bed measured: I=%s TP=%s LRA=%s' % (j['input_i'], j['input_tp'], j['input_lra']))
+          subprocess.check_call(['ffmpeg','-v','error','-y','-i','stitched.flac','-t',str(dur),
+            '-af', af + ',loudnorm=I=-14:TP=-2.5:LRA=7:linear=true:measured_I=%s:measured_TP=%s:measured_LRA=%s:measured_thresh=%s:offset=%s'
+              % (j['input_i'], j['input_tp'], j['input_lra'], j['input_thresh'], j['target_offset']),
+            '-ar','48000','-ac','2','bed.flac'])
+          print('bed built: %.1fs' % dur)
+          EOF
+
+      - name: Join, mux and verify against the master contract
+        env:
+          TOTAL: ${{ needs.plan.outputs.frames }}
+          RASTER_W: ${{ inputs.raster_w }}
+        run: |
+          ls -la segs
+          python3 - <<'PY'
+          import json, os, glob, subprocess, sys
+          total = int(os.environ['TOTAL']); rw = int(os.environ['RASTER_W'])
+          cfg = json.load(open('kit/config.json'))
+          final = cfg['out']
+          segs = sorted(glob.glob('segs/seg_*.mp4'))
+          if not segs: print('::error::no segments to join'); sys.exit(1)
+          print('joining %d slices' % len(segs))
+          with open('l.txt','w') as f:
+              for s in segs: f.write("file '%s/%s'\n" % (os.getcwd(), s))
+          subprocess.check_call(['ffmpeg','-v','error','-y','-f','concat','-safe','0','-i','l.txt',
+                                 '-c','copy','-movflags','+faststart','joined.mp4'])
+          # volume=1.0: the level lives in the bed at -14.0 LUFS under D41, never in a
+          # multiplier here. The bed is already exactly the video's length and already
+          # faded, so nothing is looped and nothing is trimmed mid-phrase.
+          subprocess.check_call(['ffmpeg','-v','error','-y','-i','joined.mp4','-i','bed.flac',
+              '-map','0:v:0','-map','1:a:0','-c:v','copy','-c:a','aac','-b:a','192k',
+              '-ar','48000','-ac','2','-shortest','-movflags','+faststart',final])
+          p = subprocess.run(['ffprobe','-v','error','-show_entries',
+              'stream=width,height,r_frame_rate,codec_name,profile,pix_fmt,color_primaries,'
+              'color_transfer,color_space,nb_frames,sample_rate','-show_entries',
+              'format=duration,size,bit_rate','-of','json',final], capture_output=True)
+          d = json.loads(p.stdout)
+          v = next((x for x in d['streams'] if x.get('width')), {})
+          a = next((x for x in d['streams'] if x.get('sample_rate')), {})
+          fm = d['format']
+          print('\n================ MASTER ================')
+          print('%s' % final)
+          print('  %sx%s  %s fps  %s (%s)  %s' % (v.get('width'), v.get('height'),
+                v.get('r_frame_rate'), v.get('codec_name'), v.get('profile'), v.get('pix_fmt')))
+          print('  colour %s/%s/%s  audio %s Hz' % (v.get('color_primaries'),
+                v.get('color_transfer'), v.get('color_space'), a.get('sample_rate')))
+          print('  %s frames  %.1f s  %.2f GB  %.2f Mbps' % (v.get('nb_frames'),
+                float(fm['duration']), int(fm['size'])/1e9, int(fm.get('bit_rate',0))/1e6))
+          # Blueprint 1i.1, the D27 table. A file that misses any row is a preview whatever
+          # it is called and may not be published, so say so here rather than downstream.
+          bad = []
+          if int(v.get('nb_frames',0)) != total: bad.append('%s frames, expected %d' % (v.get('nb_frames'), total))
+          if int(v.get('width',0)) != rw:        bad.append('raster is %sx%s, asked for %s wide' % (v.get('width'), v.get('height'), rw))
+          if int(a.get('sample_rate',0)) != 48000: bad.append('audio is %s Hz, the contract requires 48000' % a.get('sample_rate'))
+          for k in ('color_primaries','color_transfer','color_space'):
+              if v.get(k) != 'bt709': bad.append('%s reads %r, the contract requires bt709' % (k, v.get(k)))
+          if rw == 3840 and int(fm.get('bit_rate',0)) < 3_000_000:
+              bad.append('%.2f Mbps is too thin for a 4K master - check crf reached the encoder' % (int(fm['bit_rate'])/1e6))
+          for b in bad: print('::error::' + b)
+          sys.exit(1 if bad else 0)
+          PY
+
+      # The master is never downloaded. A 720p copy and a contact sheet check in seconds,
+      # and the master itself goes straight to the channel as a PRIVATE video.
+      - name: Build review assets
+        run: |
+          MASTER="$(ls *_master*.mp4 | head -1)"
+          echo "master: $MASTER"
+          bash make_review_assets.sh "$MASTER" 20 review
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rf-review-us-v1
+          path: |
+            review/review_720p.mp4
+            review/frames_page_*.png
+          retention-days: 30
+      - name: Upload master to YouTube as private
+        env:
+          YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
+          YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
+          YT_REFRESH_TOKEN: ${{ secrets.YT_REFRESH_TOKEN }}
+        run: |
+          MASTER="$(ls *_master*.mp4 | head -1)"
+          PLAYLIST="$(python3 -c "import json;print(json.load(open('kit/config.json')).get('youtube_playlist',''))")"
+          python3 yt_upload.py --file "$MASTER" \
+            ${PLAYLIST:+--playlist "$PLAYLIST"} \
+            --title "Market Marathon Rise and Fall render $(date -u +%Y-%m-%d) - PRIVATE, unreviewed" \
+            --desc "Automatic private upload from GitHub Actions run ${{ github.run_id }}. Nothing is public. Check the review copy, then set the real title, description and thumbnail before publishing." \
+            --privacy private
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: rf-master-us-v1-fallback
+          path: "*_master*.mp4"
+          retention-days: 5
+          compression-level: 0
