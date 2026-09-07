@@ -130,18 +130,19 @@ jobs:
       - name: Install Chromium for Playwright
         working-directory: kit
         run: npx playwright install --with-deps chromium
-      # Archivo is the series typeface for Format C. A runner has none of it, and canvas
+      # Archivo is the series typeface for Format C. A runner has none of it and canvas
       # silently substitutes rather than failing, which would ship the wrong typography.
-      - name: Install Archivo and prove it resolved
+      # The faces SHIP IN THE KIT rather than being fetched: `fonts-archivo` is not a
+      # Debian package and the Google Fonts download failed on the first run, which is
+      # what this guard caught. Shipping them also pins the exact files, and they are in
+      # dataset_hashes.txt like every other input.
+      - name: Install Archivo from the kit and prove it resolved
         run: |
-          sudo apt-get install -y -qq fontconfig fonts-archivo || {
-            mkdir -p ~/.fonts
-            curl -sSfL -o /tmp/archivo.zip "https://fonts.google.com/download?family=Archivo"
-            unzip -q -o /tmp/archivo.zip -d /tmp/archivo && cp /tmp/archivo/**/*.ttf ~/.fonts/ 2>/dev/null || cp /tmp/archivo/*.ttf ~/.fonts/
-            fc-cache -f
-          }
-          fc-list | grep -qi archivo || { echo "::error::Archivo did not install; refusing to render with a substituted typeface"; exit 1; }
-          fc-list | grep -i archivo | head -5
+          test -d kit/fonts || { echo "::error::the kit carries no fonts/ folder"; exit 1; }
+          sudo apt-get install -y -qq fontconfig
+          mkdir -p ~/.fonts && cp kit/fonts/*.ttf ~/.fonts/ && fc-cache -f
+          fc-list | grep -qi archivo || { echo "::error::Archivo did not resolve; refusing to render with a substituted typeface"; exit 1; }
+          fc-list | grep -i archivo
 
       - name: Render slice ${{ matrix.shard }}
         working-directory: kit
