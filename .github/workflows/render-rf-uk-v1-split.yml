@@ -48,12 +48,16 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: '22' }
       - run: unzip -q "$KIT" -d kit
+      # The UK's 30 year photographs SHIP INSIDE THE KIT, unlike the USA's, which are loose
+      # in the repo at rf_year_photos/ because 17 MB of JPEG put that zip over the upload
+      # limit. The UK's are 1400 px - exactly the largest the format ever draws one - which
+      # brings the whole kit to 8 MB, so they can live in the zip and be covered by
+      # dataset_hashes.txt directly. They must NOT be copied from rf_year_photos/: those are
+      # the USA's pictures and would silently overwrite the UK's for every overlapping year.
 
-      # Blueprint 1j: a kit without a lockfile builds against whatever the registry serves
-      # that day. Refuse it here rather than render something unreproducible.
       # RF-3 preflight. The UK races 59 HALF-YEAR periods, not 30 years, so the two numbers
-      # that have bitten this format before are checked before a runner is paid for:
-      # the declared race length against the data, and one photograph per YEAR (not period).
+      # that have bitten this format before are checked before a runner is paid for: the
+      # declared race length against the data, and one photograph per YEAR (not per period).
       - name: Preflight - RF-3 shape
         run: |
           python3 - <<'PY'
@@ -77,6 +81,8 @@ jobs:
           sys.exit(1 if bad else 0)
           PY
 
+      # Blueprint 1j: a kit without a lockfile builds against whatever the registry serves
+      # that day. Refuse it here rather than render something unreproducible.
       - name: Preflight - kit must carry a lockfile
         run: |
           test -f kit/package-lock.json || {
@@ -125,6 +131,12 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: '22' }
       - run: unzip -q "$KIT" -d kit
+      # The UK's 30 year photographs SHIP INSIDE THE KIT, unlike the USA's, which are loose
+      # in the repo at rf_year_photos/ because 17 MB of JPEG put that zip over the upload
+      # limit. The UK's are 1400 px - exactly the largest the format ever draws one - which
+      # brings the whole kit to 8 MB, so they can live in the zip and be covered by
+      # dataset_hashes.txt directly. They must NOT be copied from rf_year_photos/: those are
+      # the USA's pictures and would silently overwrite the UK's for every overlapping year.
       - run: npm ci --no-audit --no-fund
         working-directory: kit
       - name: Install ffmpeg
@@ -134,18 +146,19 @@ jobs:
       - name: Install Chromium for Playwright
         working-directory: kit
         run: npx playwright install --with-deps chromium
-      # Archivo is the series typeface for Format C. A runner has none of it, and canvas
+      # Archivo is the series typeface for Format C. A runner has none of it and canvas
       # silently substitutes rather than failing, which would ship the wrong typography.
-      - name: Install Archivo and prove it resolved
+      # The faces SHIP IN THE KIT rather than being fetched: `fonts-archivo` is not a
+      # Debian package and the Google Fonts download failed on the first run, which is
+      # what this guard caught. Shipping them also pins the exact files, and they are in
+      # dataset_hashes.txt like every other input.
+      - name: Install Archivo from the kit and prove it resolved
         run: |
-          sudo apt-get install -y -qq fontconfig fonts-archivo || {
-            mkdir -p ~/.fonts
-            curl -sSfL -o /tmp/archivo.zip "https://fonts.google.com/download?family=Archivo"
-            unzip -q -o /tmp/archivo.zip -d /tmp/archivo && cp /tmp/archivo/**/*.ttf ~/.fonts/ 2>/dev/null || cp /tmp/archivo/*.ttf ~/.fonts/
-            fc-cache -f
-          }
-          fc-list | grep -qi archivo || { echo "::error::Archivo did not install; refusing to render with a substituted typeface"; exit 1; }
-          fc-list | grep -i archivo | head -5
+          test -d kit/fonts || { echo "::error::the kit carries no fonts/ folder"; exit 1; }
+          sudo apt-get install -y -qq fontconfig
+          mkdir -p ~/.fonts && cp kit/fonts/*.ttf ~/.fonts/ && fc-cache -f
+          fc-list | grep -qi archivo || { echo "::error::Archivo did not resolve; refusing to render with a substituted typeface"; exit 1; }
+          fc-list | grep -i archivo
 
       - name: Render slice ${{ matrix.shard }}
         working-directory: kit
@@ -190,6 +203,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: unzip -q "$KIT" -d kit
+      # The UK's 30 year photographs SHIP INSIDE THE KIT, unlike the USA's, which are loose
+      # in the repo at rf_year_photos/ because 17 MB of JPEG put that zip over the upload
+      # limit. The UK's are 1400 px - exactly the largest the format ever draws one - which
+      # brings the whole kit to 8 MB, so they can live in the zip and be covered by
+      # dataset_hashes.txt directly. They must NOT be copied from rf_year_photos/: those are
+      # the USA's pictures and would silently overwrite the UK's for every overlapping year.
       - name: Install ffmpeg
         run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
       - uses: actions/download-artifact@v4
@@ -222,12 +241,15 @@ jobs:
           # Each track is CAPPED just past the point it goes quiet, then crossfaded. Without
           # the caps the crossfade lands inside the outgoing track's own fade to silence and
           # the bed drops out. Measured: 2.9 s of silence at 7:30 in the first cut.
-          folder = json.load(open('audio/beds.json'))[cfg['music_bed']]['folder']
-          root = None
-          for d,_,_ in os.walk('audio'):
-              if os.path.basename(d) == folder: root = d; break
-          if not root:
-              print('::error::the audio release has no folder %r for bed %s' % (folder, cfg['music_bed'])); sys.exit(1)
+          # Track paths come from config.json, NOT from beds.json. The release is audio-v2
+          # from 1 Sep 2026 and has no US_FORMATC key, so a lookup there fails - which is
+          # exactly what failed run 34153041345. The four tracks live in USA_bed_v2/.
+          root = 'audio'
+          if not os.path.isdir(os.path.join(root, cfg['bed_folder'])):
+              hits = [d for d,_,_ in os.walk('audio') if os.path.basename(d) == cfg['bed_folder']]
+              if not hits:
+                  print('::error::the audio release has no %r folder' % cfg['bed_folder']); sys.exit(1)
+              root = os.path.dirname(hits[0])
           args = ['ffmpeg','-hide_banner','-loglevel','error','-y']
           parts, n = [], len(cfg['bed_tracks'])
           for i,t in enumerate(cfg['bed_tracks']):
