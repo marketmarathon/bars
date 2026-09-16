@@ -35,7 +35,7 @@ on:
         default: "3840"
 
 env:
-  KIT: MarketMarathon_RaceKit_RF_FR_v1.zip
+  KIT: MarketMarathon_RaceKit_RF_FR_v3.zip
 
 jobs:
   plan:
