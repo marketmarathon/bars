@@ -123,18 +123,41 @@ jobs:
               bad.append('C2-2 needs nameoverflow true, yearmode title, brandpos footer')
           # The plates must be square and must carry alpha. A flattened plate is a navy
           # square over the bars, and it is the one C2-2 fault a preflight can catch cheaply.
-          try:
-              from PIL import Image
-          except ImportError:
-              subprocess.check_call([sys.executable, '-m', 'pip', 'install', '-q', 'pillow'])
-              from PIL import Image
+          #
+          # Read the WEBP/PNG header directly rather than opening the image. Run #1 of this
+          # workflow failed here because the runner has no Pillow and pip-installing it inside
+          # the step did not put it on this interpreter's path. A header parse has no
+          # dependency to be missing, and it is what a container check needs anyway.
+          def plate_info(path):
+              with open(path, 'rb') as fh:
+                  b = fh.read(64)
+              if b[:8] == b'\x89PNG\r\n\x1a\n':          # IHDR: width, height, then colour type
+                  w = int.from_bytes(b[16:20], 'big'); h = int.from_bytes(b[20:24], 'big')
+                  return w, h, b[25] in (4, 6)              # 4 grey+alpha, 6 truecolour+alpha
+              if b[:4] != b'RIFF' or b[8:12] != b'WEBP':
+                  return None
+              fmt = b[12:16]
+              if fmt == b'VP8X':                            # extended: flags byte, 24-bit dims
+                  return (int.from_bytes(b[24:27], 'little') + 1,
+                          int.from_bytes(b[27:30], 'little') + 1,
+                          bool(b[20] & 0x10))
+              if fmt == b'VP8L':                            # lossless: packed 14-bit dims
+                  v = int.from_bytes(b[21:25], 'little')
+                  return (v & 0x3FFF) + 1, ((v >> 14) & 0x3FFF) + 1, bool((v >> 28) & 1)
+              if fmt == b'VP8 ':                            # simple lossy: never has alpha
+                  return (int.from_bytes(b[26:28], 'little') & 0x3FFF,
+                          int.from_bytes(b[28:30], 'little') & 0x3FFF, False)
+              return None
           for f in sorted(os.listdir(pdir)):
               if not f.endswith(('.webp', '.png')):
                   continue
-              im = Image.open(os.path.join(pdir, f))
-              if im.size[0] != im.size[1]:
-                  bad.append('%s is %dx%d, not square' % (f, *im.size))
-              if 'A' not in im.getbands():
+              info = plate_info(os.path.join(pdir, f))
+              if info is None:
+                  bad.append('%s is not a WEBP or PNG this preflight can read' % f); continue
+              w, h, alpha = info
+              if w != h:
+                  bad.append('%s is %dx%d, not square' % (f, w, h))
+              if not alpha:
                   bad.append('%s has no alpha channel - it would draw as a solid square over the bars' % f)
           if not os.path.isfile(os.path.join('kit', cfg['renderer_file'])):
               bad.append('the kit does not contain %s' % cfg['renderer_file'])
