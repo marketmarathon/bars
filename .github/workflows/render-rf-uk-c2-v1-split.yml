@@ -64,12 +64,22 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: '22' }
       - run: unzip -q "$KIT" -d kit
-      # The 31 UK plates SHIP INSIDE THE KIT, unlike the USA's, which are loose in the repo at
-      # rf_year_photos/. They are 1296 px square WEBP with an alpha channel - 13 MB for the
-      # whole kit, against 66 MB had they been PNG - so they live in the zip and are covered
-      # by dataset_hashes.txt directly. They must NOT be copied from rf_year_photos/: those
-      # are the USA's pictures, they have no alpha, and they would silently overwrite the UK
-      # plates for every overlapping year, which in C2-2 means a navy square over the bars.
+      # The 31 UK plates are LOOSE IN THE REPO at uk_c2_year_photos/, like the USA's, not inside
+      # the kit zip. They are 2048 px square WEBP with an alpha channel, 19.5 MB together, which
+      # puts the zip past what can be uploaded through a browser. They are still covered by
+      # dataset_hashes.txt under their year_photos/ paths, so they are copied in BEFORE the hash
+      # step and the integrity check is unchanged - a plate altered in the repo still fails it.
+      #
+      # uk_c2_year_photos/, NOT rf_year_photos/. The latter is the USA's set: no alpha, wrong
+      # years, and in C2-2 an opaque plate draws as a navy square over the right of the board.
+      - name: Bring the UK plates into the kit
+        run: |
+          set -euo pipefail
+          test -d uk_c2_year_photos || { echo "::error::uk_c2_year_photos/ is missing from the repository"; exit 1; }
+          mkdir -p kit/year_photos
+          cp uk_c2_year_photos/*.webp kit/year_photos/
+          n=$(ls kit/year_photos/*.webp | wc -l)
+          test "$n" -eq 31 || { echo "::error::expected 31 UK plates, found $n"; exit 1; }
 
       # RF-3 preflight. The UK races 59 HALF-YEAR periods, not 30 years, so the two numbers
       # that have bitten this format before are checked before a runner is paid for: the
@@ -183,12 +193,22 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: '22' }
       - run: unzip -q "$KIT" -d kit
-      # The 31 UK plates SHIP INSIDE THE KIT, unlike the USA's, which are loose in the repo at
-      # rf_year_photos/. They are 1296 px square WEBP with an alpha channel - 13 MB for the
-      # whole kit, against 66 MB had they been PNG - so they live in the zip and are covered
-      # by dataset_hashes.txt directly. They must NOT be copied from rf_year_photos/: those
-      # are the USA's pictures, they have no alpha, and they would silently overwrite the UK
-      # plates for every overlapping year, which in C2-2 means a navy square over the bars.
+      # The 31 UK plates are LOOSE IN THE REPO at uk_c2_year_photos/, like the USA's, not inside
+      # the kit zip. They are 2048 px square WEBP with an alpha channel, 19.5 MB together, which
+      # puts the zip past what can be uploaded through a browser. They are still covered by
+      # dataset_hashes.txt under their year_photos/ paths, so they are copied in BEFORE the hash
+      # step and the integrity check is unchanged - a plate altered in the repo still fails it.
+      #
+      # uk_c2_year_photos/, NOT rf_year_photos/. The latter is the USA's set: no alpha, wrong
+      # years, and in C2-2 an opaque plate draws as a navy square over the right of the board.
+      - name: Bring the UK plates into the kit
+        run: |
+          set -euo pipefail
+          test -d uk_c2_year_photos || { echo "::error::uk_c2_year_photos/ is missing from the repository"; exit 1; }
+          mkdir -p kit/year_photos
+          cp uk_c2_year_photos/*.webp kit/year_photos/
+          n=$(ls kit/year_photos/*.webp | wc -l)
+          test "$n" -eq 31 || { echo "::error::expected 31 UK plates, found $n"; exit 1; }
       - run: npm ci --no-audit --no-fund
         working-directory: kit
       - name: Install ffmpeg
@@ -255,12 +275,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: unzip -q "$KIT" -d kit
-      # The 31 UK plates SHIP INSIDE THE KIT, unlike the USA's, which are loose in the repo at
-      # rf_year_photos/. They are 1296 px square WEBP with an alpha channel - 13 MB for the
-      # whole kit, against 66 MB had they been PNG - so they live in the zip and are covered
-      # by dataset_hashes.txt directly. They must NOT be copied from rf_year_photos/: those
-      # are the USA's pictures, they have no alpha, and they would silently overwrite the UK
-      # plates for every overlapping year, which in C2-2 means a navy square over the bars.
+      # The 31 UK plates are LOOSE IN THE REPO at uk_c2_year_photos/, like the USA's, not inside
+      # the kit zip. They are 2048 px square WEBP with an alpha channel, 19.5 MB together, which
+      # puts the zip past what can be uploaded through a browser. They are still covered by
+      # dataset_hashes.txt under their year_photos/ paths, so they are copied in BEFORE the hash
+      # step and the integrity check is unchanged - a plate altered in the repo still fails it.
+      #
+      # uk_c2_year_photos/, NOT rf_year_photos/. The latter is the USA's set: no alpha, wrong
+      # years, and in C2-2 an opaque plate draws as a navy square over the right of the board.
+      - name: Bring the UK plates into the kit
+        run: |
+          set -euo pipefail
+          test -d uk_c2_year_photos || { echo "::error::uk_c2_year_photos/ is missing from the repository"; exit 1; }
+          mkdir -p kit/year_photos
+          cp uk_c2_year_photos/*.webp kit/year_photos/
+          n=$(ls kit/year_photos/*.webp | wc -l)
+          test "$n" -eq 31 || { echo "::error::expected 31 UK plates, found $n"; exit 1; }
       - name: Install ffmpeg
         run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
       - uses: actions/download-artifact@v4
