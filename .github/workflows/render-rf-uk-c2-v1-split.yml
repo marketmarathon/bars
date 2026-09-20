@@ -79,7 +79,7 @@ jobs:
           mkdir -p kit/year_photos
           cp uk_c2_year_photos/*.webp kit/year_photos/
           n=$(ls kit/year_photos/*.webp | wc -l)
-          test "$n" -eq 31 || { echo "::error::expected 31 UK plates, found $n"; exit 1; }
+          test "$n" -eq 30 || { echo "::error::expected 30 UK plates (1997-2026; the unraced 1996 anchor has none), found $n"; exit 1; }
 
       # RF-3 preflight. The UK races 59 HALF-YEAR periods, not 30 years, so the two numbers
       # that have bitten this format before are checked before a runner is paid for: the
@@ -231,7 +231,7 @@ jobs:
           mkdir -p kit/year_photos
           cp uk_c2_year_photos/*.webp kit/year_photos/
           n=$(ls kit/year_photos/*.webp | wc -l)
-          test "$n" -eq 31 || { echo "::error::expected 31 UK plates, found $n"; exit 1; }
+          test "$n" -eq 30 || { echo "::error::expected 30 UK plates (1997-2026; the unraced 1996 anchor has none), found $n"; exit 1; }
       - run: npm ci --no-audit --no-fund
         working-directory: kit
       - name: Install ffmpeg
@@ -313,7 +313,7 @@ jobs:
           mkdir -p kit/year_photos
           cp uk_c2_year_photos/*.webp kit/year_photos/
           n=$(ls kit/year_photos/*.webp | wc -l)
-          test "$n" -eq 31 || { echo "::error::expected 31 UK plates, found $n"; exit 1; }
+          test "$n" -eq 30 || { echo "::error::expected 30 UK plates (1997-2026; the unraced 1996 anchor has none), found $n"; exit 1; }
       - name: Install ffmpeg
         run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
       - uses: actions/download-artifact@v4
