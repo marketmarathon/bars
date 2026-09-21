@@ -65,22 +65,22 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: '22' }
       - run: unzip -q "$KIT" -d kit
-      # The 29 USA C2-2 plates are LOOSE IN THE REPO at us_c2_year_photos/, not inside
-      # the kit zip. They are 2048 px square WEBP with an alpha channel, 19.5 MB together, which
-      # puts the zip past what can be uploaded through a browser. They are still covered by
-      # dataset_hashes.txt under their year_photos/ paths, so they are copied in BEFORE the hash
-      # step and the integrity check is unchanged - a plate altered in the repo still fails it.
+      # The 29 USA C2-2 plates SHIP INSIDE THE KIT, unlike the UK's, which sit loose in the
+      # repository at uk_c2_year_photos/. 2048 px square WEBP with alpha, 18.4 MB together, so
+      # the kit is 18.5 MB - inside both GitHub's 25 MB browser limit and the 20 MB limit on the
+      # bridge that carries files from Claude's workspace to Luke's laptop.
       #
-      # us_c2_year_photos/, NOT rf_year_photos/. The latter is the OLD USA set: no alpha, wrong
-      # years, and in C2-2 an opaque plate draws as a navy square over the right of the board.
-      - name: Bring the USA plates into the kit
+      # US-5, 21 September 2026. They were loose for one run and the dataset-hash gate refused
+      # it: that bridge RE-ENCODES a .webp in transit. The image is pixel-identical - checked,
+      # zero differing pixels - but the bytes are not, so a loose plate can never match
+      # dataset_hashes.txt. A .zip passes through byte for byte, so the plates travel inside one
+      # and the integrity check is honest again. The gate was right and nothing was wrong with
+      # the pictures. This is why the hash check exists.
+      - name: Check the plates came out of the kit
         run: |
           set -euo pipefail
-          test -d us_c2_year_photos || { echo "::error::us_c2_year_photos/ is missing from the repository"; exit 1; }
-          mkdir -p kit/year_photos
-          cp us_c2_year_photos/*.webp kit/year_photos/
-          n=$(ls kit/year_photos/*.webp | wc -l)
-          test "$n" -eq 29 || { echo "::error::expected 29 USA plates (1998-2026; the unraced 1997 anchor has none), found $n"; exit 1; }
+          n=$(ls kit/year_photos/*.webp 2>/dev/null | wc -l)
+          test "$n" -eq 29 || { echo "::error::expected 29 USA plates inside the kit (1998-2026; the unraced 1997 anchor has none), found $n"; exit 1; }
 
       # RF-3 preflight. The USA races 57 HALF-YEAR periods, not 29 years, so the two numbers
       # that have bitten this format before are checked before a runner is paid for: the
@@ -217,22 +217,22 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: '22' }
       - run: unzip -q "$KIT" -d kit
-      # The 29 USA C2-2 plates are LOOSE IN THE REPO at us_c2_year_photos/, not inside
-      # the kit zip. They are 2048 px square WEBP with an alpha channel, 19.5 MB together, which
-      # puts the zip past what can be uploaded through a browser. They are still covered by
-      # dataset_hashes.txt under their year_photos/ paths, so they are copied in BEFORE the hash
-      # step and the integrity check is unchanged - a plate altered in the repo still fails it.
+      # The 29 USA C2-2 plates SHIP INSIDE THE KIT, unlike the UK's, which sit loose in the
+      # repository at uk_c2_year_photos/. 2048 px square WEBP with alpha, 18.4 MB together, so
+      # the kit is 18.5 MB - inside both GitHub's 25 MB browser limit and the 20 MB limit on the
+      # bridge that carries files from Claude's workspace to Luke's laptop.
       #
-      # us_c2_year_photos/, NOT rf_year_photos/. The latter is the OLD USA set: no alpha, wrong
-      # years, and in C2-2 an opaque plate draws as a navy square over the right of the board.
-      - name: Bring the USA plates into the kit
+      # US-5, 21 September 2026. They were loose for one run and the dataset-hash gate refused
+      # it: that bridge RE-ENCODES a .webp in transit. The image is pixel-identical - checked,
+      # zero differing pixels - but the bytes are not, so a loose plate can never match
+      # dataset_hashes.txt. A .zip passes through byte for byte, so the plates travel inside one
+      # and the integrity check is honest again. The gate was right and nothing was wrong with
+      # the pictures. This is why the hash check exists.
+      - name: Check the plates came out of the kit
         run: |
           set -euo pipefail
-          test -d us_c2_year_photos || { echo "::error::us_c2_year_photos/ is missing from the repository"; exit 1; }
-          mkdir -p kit/year_photos
-          cp us_c2_year_photos/*.webp kit/year_photos/
-          n=$(ls kit/year_photos/*.webp | wc -l)
-          test "$n" -eq 29 || { echo "::error::expected 29 USA plates (1998-2026; the unraced 1997 anchor has none), found $n"; exit 1; }
+          n=$(ls kit/year_photos/*.webp 2>/dev/null | wc -l)
+          test "$n" -eq 29 || { echo "::error::expected 29 USA plates inside the kit (1998-2026; the unraced 1997 anchor has none), found $n"; exit 1; }
       - run: npm ci --no-audit --no-fund
         working-directory: kit
       - name: Install ffmpeg
@@ -299,22 +299,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: unzip -q "$KIT" -d kit
-      # The 29 USA C2-2 plates are LOOSE IN THE REPO at us_c2_year_photos/, not inside
-      # the kit zip. They are 2048 px square WEBP with an alpha channel, 19.5 MB together, which
-      # puts the zip past what can be uploaded through a browser. They are still covered by
-      # dataset_hashes.txt under their year_photos/ paths, so they are copied in BEFORE the hash
-      # step and the integrity check is unchanged - a plate altered in the repo still fails it.
+      # The 29 USA C2-2 plates SHIP INSIDE THE KIT, unlike the UK's, which sit loose in the
+      # repository at uk_c2_year_photos/. 2048 px square WEBP with alpha, 18.4 MB together, so
+      # the kit is 18.5 MB - inside both GitHub's 25 MB browser limit and the 20 MB limit on the
+      # bridge that carries files from Claude's workspace to Luke's laptop.
       #
-      # us_c2_year_photos/, NOT rf_year_photos/. The latter is the OLD USA set: no alpha, wrong
-      # years, and in C2-2 an opaque plate draws as a navy square over the right of the board.
-      - name: Bring the USA plates into the kit
+      # US-5, 21 September 2026. They were loose for one run and the dataset-hash gate refused
+      # it: that bridge RE-ENCODES a .webp in transit. The image is pixel-identical - checked,
+      # zero differing pixels - but the bytes are not, so a loose plate can never match
+      # dataset_hashes.txt. A .zip passes through byte for byte, so the plates travel inside one
+      # and the integrity check is honest again. The gate was right and nothing was wrong with
+      # the pictures. This is why the hash check exists.
+      - name: Check the plates came out of the kit
         run: |
           set -euo pipefail
-          test -d us_c2_year_photos || { echo "::error::us_c2_year_photos/ is missing from the repository"; exit 1; }
-          mkdir -p kit/year_photos
-          cp us_c2_year_photos/*.webp kit/year_photos/
-          n=$(ls kit/year_photos/*.webp | wc -l)
-          test "$n" -eq 29 || { echo "::error::expected 29 USA plates (1998-2026; the unraced 1997 anchor has none), found $n"; exit 1; }
+          n=$(ls kit/year_photos/*.webp 2>/dev/null | wc -l)
+          test "$n" -eq 29 || { echo "::error::expected 29 USA plates inside the kit (1998-2026; the unraced 1997 anchor has none), found $n"; exit 1; }
       - name: Install ffmpeg
         run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
       - uses: actions/download-artifact@v4
